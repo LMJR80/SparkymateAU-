@@ -1,327 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SparkymateAU</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f59e0b">
+<title>SparkymateAU</title>
 
-  <style>
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #111827;
-      color: white;
-    }
-
-    .header {
-      background: #f59e0b;
-      color: #111827;
-      padding: 20px;
-      text-align: center;
-    }
-
-    .header h1 {
-      margin: 0;
-      font-size: 29px;
-    }
-
-    .header p {
-      margin: 6px 0 0;
-      font-weight: 600;
-    }
-
-    .container {
-      max-width: 760px;
-      margin: auto;
-      padding: 16px;
-    }
-
-    .card {
-      background: #1f2937;
-      border-radius: 16px;
-      padding: 18px;
-      margin-top: 16px;
-      box-shadow: 0 8px 25px rgba(0,0,0,.2);
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
-    .status {
-      display: inline-block;
-      background: #064e3b;
-      color: #a7f3d0;
-      padding: 7px 11px;
-      border-radius: 20px;
-      font-size: 13px;
-      margin-bottom: 15px;
-    }
-
-    .quick-title {
-      font-size: 14px;
-      color: #d1d5db;
-      margin-bottom: 8px;
-    }
-
-    .quick-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 15px;
-    }
-
-    .quick {
-      margin: 0;
-      padding: 11px 8px;
-      background: #374151;
-      color: white;
-      font-size: 14px;
-      border: 1px solid #4b5563;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 140px;
-      padding: 15px;
-      border-radius: 12px;
-      border: 1px solid #4b5563;
-      background: #111827;
-      color: white;
-      font-size: 16px;
-      resize: vertical;
-      outline: none;
-    }
-
-    textarea:focus {
-      border-color: #f59e0b;
-    }
-
-    button {
-      width: 100%;
-      margin-top: 12px;
-      padding: 14px;
-      border: none;
-      border-radius: 10px;
-      background: #f59e0b;
-      color: #111827;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      opacity: .6;
-    }
-
-    #answer {
-      margin-top: 18px;
-      padding: 16px;
-      background: #111827;
-      border-radius: 12px;
-      line-height: 1.6;
-      min-height: 58px;
-      overflow-wrap: anywhere;
-    }
-
-    .answer-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .secondary {
-      background: #374151;
-      color: white;
-    }
-
-    .warning {
-      margin-top: 16px;
-      padding: 12px;
-      border-left: 4px solid #f59e0b;
-      background: #111827;
-      border-radius: 6px;
-      font-size: 13px;
-      line-height: 1.5;
-      color: #d1d5db;
-    }
-
-    .footer {
-      text-align: center;
-      color: #9ca3af;
-      font-size: 12px;
-      padding: 20px;
-    }
-
-    @media (max-width: 480px) {
-      .quick-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .container {
-        padding: 12px;
-      }
-    }
-  </style>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#fff}
+header{background:#f59e0b;color:#111827;text-align:center;padding:18px}
+header h1{margin:0;font-size:29px}
+header p{margin:5px 0 0;font-weight:600}
+.container{max-width:800px;margin:auto;padding:14px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
+.tab{background:#374151;color:#fff;padding:11px 5px;margin:0;font-size:13px}
+.tab.active{background:#f59e0b;color:#111827}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:#1f2937;border-radius:16px;padding:18px;margin:12px 0;box-shadow:0 8px 24px #0003}
+h2,h3{margin-top:0}
+label{display:block;margin:12px 0 5px;color:#d1d5db;font-size:14px}
+input,textarea,select{width:100%;padding:13px;border-radius:10px;border:1px solid #4b5563;background:#111827;color:#fff;font-size:16px}
+textarea{min-height:120px;resize:vertical}
+button{width:100%;border:0;border-radius:10px;padding:14px;margin-top:11px;background:#f59e0b;color:#111827;font-size:16px;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.6}
+.secondary{background:#374151;color:#fff}
+.danger{background:#7f1d1d;color:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick button{background:#374151;color:#fff;margin:0;font-size:14px}
+.result{background:#111827;border-radius:11px;padding:15px;margin-top:14px;white-space:pre-wrap;line-height:1.55;overflow-wrap:anywhere}
+.status{display:inline-block;background:#064e3b;color:#a7f3d0;padding:7px 11px;border-radius:20px;font-size:13px;margin-bottom:12px}
+.warning{margin-top:15px;padding:12px;border-left:4px solid #f59e0b;background:#111827;border-radius:7px;color:#d1d5db;font-size:13px;line-height:1.5}
+.small{font-size:12px;color:#9ca3af;line-height:1.45}
+.historyItem{background:#111827;border-radius:10px;padding:12px;margin-top:9px;white-space:pre-wrap}
+.footer{text-align:center;color:#9ca3af;font-size:12px;padding:20px}
+@media(max-width:520px){
+ .tabs{grid-template-columns:repeat(2,1fr)}
+ .grid2{grid-template-columns:1fr}
+}
+</style>
 </head>
 
 <body>
+<header>
+<h1>⚡ SparkymateAU</h1>
+<p>Smart tools for Australian electricians</p>
+</header>
 
-  <div class="header">
-    <h1>⚡ SparkymateAU</h1>
-    <p>AI assistant for Australian electricians</p>
-  </div>
+<div class="container">
 
-  <div class="container">
+<div class="tabs">
+<button class="tab active" onclick="showTab('ai',this)">⚡ Ask AI</button>
+<button class="tab" onclick="showTab('calc',this)">🧮 Calculators</button>
+<button class="tab" onclick="showTab('report',this)">📝 Job Report</button>
+<button class="tab" onclick="showTab('quote',this)">💰 Quote</button>
+<button class="tab" onclick="showTab('saved',this)">💾 Saved</button>
+</div>
 
-    <div class="card">
-      <div class="status">● AI Connected</div>
+<section id="ai" class="panel active">
+<div class="card">
+<div class="status">● SparkymateAU AI</div>
+<h2>Ask SparkymateAU</h2>
 
-      <h2>What can I help with?</h2>
+<div class="quick">
+<button onclick="promptAI('Help me calculate current. Ask for any missing information.')">⚡ Current</button>
+<button onclick="promptAI('Help me calculate voltage drop. Ask for all missing circuit details before calculating.')">📉 Voltage Drop</button>
+<button onclick="promptAI('Help me troubleshoot an electrical fault safely. Ask for symptoms and actual test results.')">🔧 Fault Finding</button>
+<button onclick="promptAI('Help me prepare a professional electrical job report. Ask for the job details.')">📝 Job Report</button>
+</div>
 
-      <div class="quick-title">Quick tools</div>
+<label>Question</label>
+<textarea id="question" placeholder="Ask an electrical question..."></textarea>
 
-      <div class="quick-grid">
-        <button class="quick" onclick="quickAsk('Calculate current from watts and voltage. Ask me for any missing values.')">
-          ⚡ Current
-        </button>
+<div class="grid2">
+<button id="voiceBtn" class="secondary" onclick="startVoice()">🎤 Speak</button>
+<button class="secondary" onclick="clearAI()">Clear</button>
+</div>
 
-        <button class="quick" onclick="quickAsk('Help me calculate voltage drop for an electrical circuit. Ask for the required details.')">
-          📉 Voltage Drop
-        </button>
+<button id="askButton" onclick="askAI()">Ask SparkymateAU AI</button>
 
-        <button class="quick" onclick="quickAsk('Help me troubleshoot an electrical fault safely. Ask me for symptoms and test results first.')">
-          🔧 Fault Finding
-        </button>
+<div id="answer" class="result">Ready. Ask me an electrical question.</div>
 
-        <button class="quick" onclick="quickAsk('Help me write a professional electrical job report. Ask me for the job details.')">
-          📝 Job Report
-        </button>
-      </div>
+<div class="grid2">
+<button class="secondary" onclick="copyText('answer')">Copy Answer</button>
+<button class="secondary" onclick="saveAnswer()">Save Answer</button>
+</div>
 
-      <textarea
-        id="question"
-        placeholder="Example: How many amps is 3200W at 240V?"
-      ></textarea>
-
-      <button id="askButton" onclick="askAI()">
-        Ask SparkymateAU AI
-      </button>
-
-      <div id="answer">Ready. Ask me an electrical question.</div>
-
-      <div class="answer-actions">
-        <button class="secondary" onclick="copyAnswer()">Copy Answer</button>
-        <button class="secondary" onclick="clearChat()">Clear</button>
-      </div>
-
-      <div class="warning">
-        ⚠️ <strong>Stage 1 prototype.</strong> Always verify electrical work
-        against current Australian requirements, applicable standards,
-        manufacturer instructions and professional judgement.
-        SparkymateAU does not replace required testing or verification.
-      </div>
-    </div>
-
-    <div class="footer">
-      SparkymateAU • Built for Australian electricians 🇦🇺
-    </div>
-
-  </div>
-
-  <script>
-    function cleanAnswer(text) {
-      return (text || "")
-        .replace(/\*\*/g, "")
-        .replace(/###\s*/g, "")
-        .replace(/##\s*/g, "")
-        .replace(/#\s*/g, "")
-        .replace(/\$\$/g, "")
-        .replace(/\$/g, "")
-        .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "$1 / $2")
-        .replace(/\\text\{([^{}]+)\}/g, "$1")
-        .replace(/\\times/g, "×")
-        .replace(/\\cdot/g, "×");
-    }
-
-    function quickAsk(text) {
-      const question = document.getElementById("question");
-      question.value = text;
-      question.focus();
-    }
-
-    async function askAI() {
-      const question = document.getElementById("question").value.trim();
-      const answer = document.getElementById("answer");
-      const button = document.getElementById("askButton");
-
-      if (!question) {
-        answer.textContent = "Please enter a question first.";
-        return;
-      }
-
-      button.disabled = true;
-      button.textContent = "Thinking...";
-      answer.textContent = "SparkymateAU is thinking...";
-
-      try {
-        const response = await fetch("/api/ask", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            message: question
-          })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Something went wrong.");
-        }
-
-        answer.textContent =
-          cleanAnswer(data.answer || "No answer returned.");
-
-      } catch (error) {
-        answer.textContent =
-          "Error connecting to SparkymateAU AI:\n\n" +
-          error.message;
-      }
-
-      button.disabled = false;
-      button.textContent = "Ask SparkymateAU AI";
-    }
-
-    async function copyAnswer() {
-      const text = document.getElementById("answer").textContent;
-
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (error) {
-        alert("Could not copy the answer automatically.");
-      }
-    }
-
-    function clearChat() {
-      document.getElementById("question").value = "";
-      document.getElementById("answer").textContent =
-        "Ready. Ask me an electrical question.";
-      document.getElementById("question").focus();
-    }
-
-    document.getElementById("question").addEventListener(
-      "keydown",
-      function(event) {
-        if (event.key === "Enter" && !event.shiftKey) {
-          event.preventDefault();
-          askAI();
-        }
-      }
-    );
-  </script>
-
-</body>
-</html>
+<div class="warning">⚠️ SparkymateAU is an assistance tool. Verify electrical work against current applicable requirements, standards, manufacturer information, site conditions and required testing. Do not rely on AI output as proof of compliance or safety.</div>
+</div>
+</
