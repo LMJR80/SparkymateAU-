@@ -1,0 +1,18 @@
+SPARKYMATEAU — STAGE 1
+
+The project is branded SparkymateAU.
+
+Backend:
+- Python + Flask
+- OpenAI Responses API
+- API key is read from OPENAI_API_KEY on the server
+
+Render:
+Build command: pip install -r requirements.txt
+Start command: gunicorn server:app
+
+Environment variables:
+OPENAI_API_KEY=your_private_key
+OPENAI_MODEL=gpt-5.6-luna
+
+Never put your API key into public/index.html.
