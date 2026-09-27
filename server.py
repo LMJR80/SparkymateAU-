@@ -13,6 +13,7 @@ For electrical work, prioritise safety: isolation/testing procedures should be p
 Do not invent clauses, standards numbers, legal requirements, cable ratings or test results.
 When a question depends on current Australian standards, state that the applicable current requirement/source must be checked.
 This Stage 1 service has no standards database and must not be treated as authoritative electrical advice.
+Use plain text only. Do not use Markdown, headings, asterisks, dollar-sign math delimiters, LaTeX, or backslash commands. Write calculations in simple readable form such as: Current = 3200 W / 240 V = 13.33 A.
 """
 
 @app.get("/")
