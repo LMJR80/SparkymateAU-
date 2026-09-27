@@ -62,4 +62,192 @@
 <div><label>Power (W)</label><input id="tpP" type="number"></div>
 <div><label>Line voltage (V)</label><input id="tpV" type="number" value="415"></div>
 </div>
-<label>Power factor</label><input id="
+<label>Power factor</label><input id="pf" type="number" value="1" step=".01">
+<button onclick="three()">Calculate</button>
+<div id="tpO" class="out">I = P ÷ (√3 × V × PF)</div>
+</div>
+
+<div class="card">
+<h2>Ohm's Law</h2>
+<p class="small">Enter any two compatible values.</p>
+<div class="two">
+<div><label>Voltage (V)</label><input id="ov" type="number"></div>
+<div><label>Current (A)</label><input id="oi" type="number"></div>
+<div><label>Resistance (Ω)</label><input id="or" type="number"></div>
+<div><label>Power (W)</label><input id="op" type="number"></div>
+</div>
+<button onclick="ohm()">Calculate</button>
+<div id="oo" class="out">Enter two values.</div>
+</div>
+
+<div class="card">
+<h2>Voltage Drop</h2>
+<p class="small">Enter conductor resistance from an appropriate current source or manufacturer reference. SparkymateAU does not select cable ratings.</p>
+<label>System</label>
+<select id="vds"><option value="1">Single phase / DC</option><option value="3">Three phase</option></select>
+<div class="two">
+<div><label>Current (A)</label><input id="vdi" type="number"></div>
+<div><label>One-way length (m)</label><input id="vdl" type="number"></div>
+</div>
+<label>Conductor resistance (Ω/km)</label><input id="vdr" type="number">
+<label>Nominal voltage (optional)</label><input id="vdv" type="number">
+<button onclick="vd()">Calculate</button>
+<div id="vdo" class="out">Enter circuit values.</div>
+</div>
+</section>
+
+<section id="report" class="panel"><div class="card">
+<h2>Job Report Builder</h2>
+<label>Customer</label><input id="rc">
+<label>Site / Address</label><input id="rs">
+<label>Job description</label><textarea id="rj"></textarea>
+<label>Work performed</label><textarea id="rw"></textarea>
+<label>Tests / measured results</label><textarea id="rt"></textarea>
+<label>Notes / recommendations</label><textarea id="rn"></textarea>
+<button onclick="report()">Generate Report</button>
+<div id="ro" class="out">Your report will appear here.</div>
+<div class="two">
+<button class="grey" onclick="copy('ro')">Copy Report</button>
+<button class="grey" onclick="save('Job Report',document.getElementById('ro').textContent)">Save Report</button>
+</div>
+</div></section>
+
+<section id="quote" class="panel"><div class="card">
+<h2>Quote Calculator</h2>
+<div class="two">
+<div><label>Labour hours</label><input id="qh" type="number"></div>
+<div><label>Hourly rate ($)</label><input id="qr" type="number"></div>
+</div>
+<label>Materials ($)</label><input id="qm" type="number">
+<label>Materials markup (%)</label><input id="qmu" type="number" value="0">
+<label>Other charges ($)</label><input id="qo" type="number" value="0">
+<label><input id="gst" type="checkbox" checked style="width:auto"> Add 10% GST</label>
+<button onclick="quote()">Calculate Quote</button>
+<div id="qout" class="out">Enter quote values.</div>
+<button class="grey" onclick="copy('qout')">Copy Quote</button>
+<p class="small">Confirm your own pricing, tax treatment and invoicing requirements.</p>
+</div></section>
+
+<section id="saved" class="panel"><div class="card">
+<h2>Saved Items</h2>
+<p class="small">Stored only in this browser/device. Clearing browser data removes these records.</p>
+<div id="savedList"></div>
+<button onclick="clearSaved()">Clear Saved Items</button>
+</div></section>
+
+<div class="footer">SparkymateAU • Built for Australian electricians 🇦🇺</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const num=id=>parseFloat($(id).value);
+const good=(...a)=>a.every(Number.isFinite);
+const f=(x,u="")=>Number(x).toLocaleString(undefined,{maximumFractionDigits:3})+(u?" "+u:"");
+
+function tab(id,b){
+ document.querySelectorAll(".panel").forEach(x=>x.classList.remove("on"));
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+ $(id).classList.add("on");b.classList.add("on");
+ if(id==="saved")renderSaved();
+}
+
+function single(){
+ let p=num("spP"),v=num("spV");
+ $("spO").textContent=good(p,v)&&v>0?"Current = "+f(p/v,"A")+"\nI = P ÷ V":"Enter valid values.";
+}
+
+function three(){
+ let p=num("tpP"),v=num("tpV"),x=num("pf");
+ $("tpO").textContent=good(p,v,x)&&v>0&&x>0&&x<=1?"Current = "+f(p/(Math.sqrt(3)*v*x),"A")+"\nI = P ÷ (√3 × V × PF)":"Enter valid values. PF must be above 0 and no greater than 1.";
+}
+
+function ohm(){
+ let V=num("ov"),I=num("oi"),R=num("or"),P=num("op");
+ let v=Number.isFinite(V),i=Number.isFinite(I),r=Number.isFinite(R),p=Number.isFinite(P);
+ if(v&&i){R=I?V/I:NaN;P=V*I}
+ else if(v&&r&&R){I=V/R;P=V*I}
+ else if(i&&r){V=I*R;P=V*I}
+ else if(v&&p&&V){I=P/V;R=I?V/I:NaN}
+ else if(i&&p&&I){V=P/I;R=V/I}
+ else if(r&&p&&R>0&&P>=0){I=Math.sqrt(P/R);V=I*R}
+ else{$("oo").textContent="Enter two compatible values.";return}
+ $("oo").textContent="Voltage: "+f(V,"V")+"\nCurrent: "+f(I,"A")+"\nResistance: "+f(R,"Ω")+"\nPower: "+f(P,"W");
+}
+
+function vd(){
+ let I=num("vdi"),L=num("vdl"),R=num("vdr"),V=num("vdv");
+ if(!good(I,L,R)||I<0||L<0||R<0){$("vdo").textContent="Enter valid values.";return}
+ let d=$("vds").value==="3"?Math.sqrt(3)*I*R*L/1000:2*I*R*L/1000;
+ let t="Voltage drop = "+f(d,"V");
+ if(Number.isFinite(V)&&V>0)t+="\nPercentage drop = "+f(d/V*100,"%");
+ $("vdo").textContent=t+"\n\nConfirm conductor data, temperature, reactance where relevant, circuit arrangement and applicable requirements.";
+}
+
+function report(){
+ const v=id=>$(id).value.trim()||"Not entered";
+ $("ro").textContent="SPARKYMATEAU JOB REPORT\n\nCustomer: "+v("rc")+"\nSite: "+v("rs")+"\n\nJOB DESCRIPTION\n"+v("rj")+"\n\nWORK PERFORMED\n"+v("rw")+"\n\nTESTS / MEASURED RESULTS\n"+v("rt")+"\n\nNOTES / RECOMMENDATIONS\n"+v("rn");
+}
+
+function quote(){
+ let h=num("qh")||0,r=num("qr")||0,m=num("qm")||0,mu=num("qmu")||0,o=num("qo")||0;
+ let labour=h*r,materials=m*(1+mu/100),sub=labour+materials+o,g=$("gst").checked?sub*.1:0,total=sub+g;
+ $("qout").textContent="Labour: $"+labour.toFixed(2)+"\nMaterials: $"+materials.toFixed(2)+"\nOther: $"+o.toFixed(2)+"\nSubtotal: $"+sub.toFixed(2)+"\nGST: $"+g.toFixed(2)+"\nTOTAL: $"+total.toFixed(2);
+}
+
+function promptQ(t){$("question").value=t;$("question").focus()}
+function clearAI(){$("question").value="";$("answer").textContent="Ready. Ask me an electrical question."}
+
+async function askAI(){
+ let q=$("question").value.trim(),b=$("ask");
+ if(!q){$("answer").textContent="Please enter a question first.";return}
+ b.disabled=true;b.textContent="Thinking...";$("answer").textContent="SparkymateAU is thinking...";
+ try{
+  let r=await fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q})});
+  let ct=r.headers.get("content-type")||"";
+  if(!ct.includes("application/json"))throw Error("The AI service returned a server error.");
+  let d=await r.json();
+  if(!r.ok)throw Error(d.error||"AI request failed.");
+  $("answer").textContent=d.answer||"No answer returned.";
+ }catch(e){$("answer").textContent="SparkymateAU couldn't complete that request.\n\n"+e.message+"\n\nPlease try again."}
+ finally{b.disabled=false;b.textContent="Ask SparkymateAU AI"}
+}
+
+async function copy(id){
+ try{await navigator.clipboard.writeText($(id).textContent);alert("Copied.")}
+ catch(e){alert("Copy is not available in this browser.")}
+}
+
+function items(){try{return JSON.parse(localStorage.getItem("sparkymateSaved")||"[]")}catch(e){return[]}}
+
+function save(type,text){
+ let a=items();a.unshift({type,text,date:new Date().toLocaleString()});
+ localStorage.setItem("sparkymateSaved",JSON.stringify(a.slice(0,50)));
+ alert("Saved on this device.");
+}
+
+function renderSaved(){
+ let box=$("savedList"),a=items();box.textContent="";
+ if(!a.length){box.textContent="No saved items yet.";return}
+ a.forEach(x=>{let d=document.createElement("div");d.className="saved";d.textContent=x.type+" • "+x.date+"\n\n"+x.text;box.appendChild(d)});
+}
+
+function clearSaved(){
+ if(confirm("Clear all saved items?")){localStorage.removeItem("sparkymateSaved");renderSaved()}
+}
+
+function speak(){
+ let SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){alert("Voice input isn't supported by this browser.");return}
+ let r=new SR();r.lang="en-AU";$("voice").textContent="Listening...";
+ r.onresult=e=>$("question").value=e.results[0][0].transcript;
+ r.onend=()=>$("voice").textContent="🎤 Speak";
+ r.onerror=()=>alert("Voice input could not be completed.");
+ r.start();
+}
+
+$("question").addEventListener("keydown",e=>{
+ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();askAI()}
+});
+</script>
+</body>
+</html>
