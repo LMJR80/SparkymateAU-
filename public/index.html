@@ -1,93 +1,65 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f59e0b">
 <title>SparkymateAU</title>
-
 <style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#fff}
-header{background:#f59e0b;color:#111827;text-align:center;padding:18px}
-header h1{margin:0;font-size:29px}
-header p{margin:5px 0 0;font-weight:600}
-.container{max-width:800px;margin:auto;padding:14px}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
-.tab{background:#374151;color:#fff;padding:11px 5px;margin:0;font-size:13px}
-.tab.active{background:#f59e0b;color:#111827}
-.panel{display:none}
-.panel.active{display:block}
-.card{background:#1f2937;border-radius:16px;padding:18px;margin:12px 0;box-shadow:0 8px 24px #0003}
-h2,h3{margin-top:0}
-label{display:block;margin:12px 0 5px;color:#d1d5db;font-size:14px}
-input,textarea,select{width:100%;padding:13px;border-radius:10px;border:1px solid #4b5563;background:#111827;color:#fff;font-size:16px}
-textarea{min-height:120px;resize:vertical}
-button{width:100%;border:0;border-radius:10px;padding:14px;margin-top:11px;background:#f59e0b;color:#111827;font-size:16px;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.6}
-.secondary{background:#374151;color:#fff}
-.danger{background:#7f1d1d;color:#fff}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.quick button{background:#374151;color:#fff;margin:0;font-size:14px}
-.result{background:#111827;border-radius:11px;padding:15px;margin-top:14px;white-space:pre-wrap;line-height:1.55;overflow-wrap:anywhere}
-.status{display:inline-block;background:#064e3b;color:#a7f3d0;padding:7px 11px;border-radius:20px;font-size:13px;margin-bottom:12px}
-.warning{margin-top:15px;padding:12px;border-left:4px solid #f59e0b;background:#111827;border-radius:7px;color:#d1d5db;font-size:13px;line-height:1.5}
-.small{font-size:12px;color:#9ca3af;line-height:1.45}
-.historyItem{background:#111827;border-radius:10px;padding:12px;margin-top:9px;white-space:pre-wrap}
-.footer{text-align:center;color:#9ca3af;font-size:12px;padding:20px}
-@media(max-width:520px){
- .tabs{grid-template-columns:repeat(2,1fr)}
- .grid2{grid-template-columns:1fr}
-}
+*{box-sizing:border-box}body{margin:0;background:#0b1220;color:#fff;font-family:Arial,sans-serif}header{background:#f59e0b;color:#111827;text-align:center;padding:18px}h1{margin:0;font-size:29px}header p{margin:5px 0;font-weight:bold}.wrap{max-width:800px;margin:auto;padding:12px}.tabs,.two,.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tabs{grid-template-columns:repeat(3,1fr);margin:10px 0}.panel{display:none}.panel.on{display:block}.card{background:#1f2937;padding:17px;border-radius:15px;margin:12px 0}button{width:100%;border:0;border-radius:9px;padding:13px;margin-top:9px;background:#f59e0b;color:#111827;font-size:15px;font-weight:bold}.tab,.grey{background:#374151;color:#fff}.tab.on{background:#f59e0b;color:#111827}.quick button{margin:0;background:#374151;color:#fff}label{display:block;margin:11px 0 5px;color:#d1d5db;font-size:14px}input,textarea,select{width:100%;padding:12px;border:1px solid #4b5563;border-radius:9px;background:#111827;color:#fff;font-size:16px}textarea{min-height:110px}.out{white-space:pre-wrap;background:#111827;padding:14px;border-radius:9px;margin-top:12px;line-height:1.5;overflow-wrap:anywhere}.small{color:#9ca3af;font-size:12px;line-height:1.4}.warn{border-left:4px solid #f59e0b;padding:10px;background:#111827;margin-top:12px;color:#d1d5db;font-size:12px}.saved{background:#111827;padding:10px;border-radius:8px;margin-top:8px;white-space:pre-wrap}.footer{text-align:center;color:#9ca3af;font-size:12px;padding:20px}@media(max-width:500px){.tabs{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
 </style>
 </head>
-
 <body>
-<header>
-<h1>⚡ SparkymateAU</h1>
-<p>Smart tools for Australian electricians</p>
-</header>
+<header><h1>⚡ SparkymateAU</h1><p>Smart tools for Australian electricians</p></header>
 
-<div class="container">
-
+<div class="wrap">
 <div class="tabs">
-<button class="tab active" onclick="showTab('ai',this)">⚡ Ask AI</button>
-<button class="tab" onclick="showTab('calc',this)">🧮 Calculators</button>
-<button class="tab" onclick="showTab('report',this)">📝 Job Report</button>
-<button class="tab" onclick="showTab('quote',this)">💰 Quote</button>
-<button class="tab" onclick="showTab('saved',this)">💾 Saved</button>
+<button class="tab on" onclick="tab('ai',this)">⚡ Ask AI</button>
+<button class="tab" onclick="tab('calc',this)">🧮 Calculators</button>
+<button class="tab" onclick="tab('report',this)">📝 Job Report</button>
+<button class="tab" onclick="tab('quote',this)">💰 Quote</button>
+<button class="tab" onclick="tab('saved',this)">💾 Saved</button>
 </div>
 
-<section id="ai" class="panel active">
-<div class="card">
-<div class="status">● SparkymateAU AI</div>
+<section id="ai" class="panel on"><div class="card">
 <h2>Ask SparkymateAU</h2>
-
 <div class="quick">
-<button onclick="promptAI('Help me calculate current. Ask for any missing information.')">⚡ Current</button>
-<button onclick="promptAI('Help me calculate voltage drop. Ask for all missing circuit details before calculating.')">📉 Voltage Drop</button>
-<button onclick="promptAI('Help me troubleshoot an electrical fault safely. Ask for symptoms and actual test results.')">🔧 Fault Finding</button>
-<button onclick="promptAI('Help me prepare a professional electrical job report. Ask for the job details.')">📝 Job Report</button>
+<button onclick="promptQ('Help me calculate current. Ask for missing values.')">⚡ Current</button>
+<button onclick="promptQ('Help me calculate voltage drop. Ask for required circuit details.')">📉 Voltage Drop</button>
+<button onclick="promptQ('Help me troubleshoot an electrical fault safely. Ask for symptoms and test results.')">🔧 Fault Finding</button>
+<button onclick="promptQ('Help me prepare an electrical job report.')">📝 Job Report</button>
 </div>
-
 <label>Question</label>
 <textarea id="question" placeholder="Ask an electrical question..."></textarea>
+<div class="two">
+<button class="grey" id="voice" onclick="speak()">🎤 Speak</button>
+<button class="grey" onclick="clearAI()">Clear</button>
+</div>
+<button id="ask" onclick="askAI()">Ask SparkymateAU AI</button>
+<div id="answer" class="out">Ready. Ask me an electrical question.</div>
+<div class="two">
+<button class="grey" onclick="copy('answer')">Copy Answer</button>
+<button class="grey" onclick="save('AI Answer',document.getElementById('answer').textContent)">Save Answer</button>
+</div>
+<div class="warn">⚠️ Verify electrical work against current applicable requirements, standards, manufacturer information, site conditions and required testing. AI output is not proof of compliance or safety.</div>
+</div></section>
 
-<div class="grid2">
-<button id="voiceBtn" class="secondary" onclick="startVoice()">🎤 Speak</button>
-<button class="secondary" onclick="clearAI()">Clear</button>
+<section id="calc" class="panel">
+
+<div class="card">
+<h2>Single Phase Current</h2>
+<div class="two">
+<div><label>Power (W)</label><input id="spP" type="number"></div>
+<div><label>Voltage (V)</label><input id="spV" type="number" value="240"></div>
+</div>
+<button onclick="single()">Calculate</button>
+<div id="spO" class="out">I = P ÷ V</div>
 </div>
 
-<button id="askButton" onclick="askAI()">Ask SparkymateAU AI</button>
-
-<div id="answer" class="result">Ready. Ask me an electrical question.</div>
-
-<div class="grid2">
-<button class="secondary" onclick="copyText('answer')">Copy Answer</button>
-<button class="secondary" onclick="saveAnswer()">Save Answer</button>
+<div class="card">
+<h2>Three Phase Current</h2>
+<div class="two">
+<div><label>Power (W)</label><input id="tpP" type="number"></div>
+<div><label>Line voltage (V)</label><input id="tpV" type="number" value="415"></div>
 </div>
-
-<div class="warning">⚠️ SparkymateAU is an assistance tool. Verify electrical work against current applicable requirements, standards, manufacturer information, site conditions and required testing. Do not rely on AI output as proof of compliance or safety.</div>
-</div>
-</
+<label>Power factor</label><input id="
