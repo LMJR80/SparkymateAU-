@@ -6,9 +6,7 @@
   <title>SparkymateAU</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -19,75 +17,151 @@
 
     .header {
       background: #f59e0b;
+      color: #111827;
       padding: 20px;
       text-align: center;
     }
 
     .header h1 {
       margin: 0;
-      font-size: 28px;
+      font-size: 29px;
     }
 
     .header p {
       margin: 6px 0 0;
-      color: #111827;
+      font-weight: 600;
     }
 
     .container {
-      max-width: 700px;
+      max-width: 760px;
       margin: auto;
-      padding: 20px;
+      padding: 16px;
     }
 
     .card {
       background: #1f2937;
-      border-radius: 14px;
-      padding: 20px;
-      margin-top: 20px;
+      border-radius: 16px;
+      padding: 18px;
+      margin-top: 16px;
+      box-shadow: 0 8px 25px rgba(0,0,0,.2);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .status {
+      display: inline-block;
+      background: #064e3b;
+      color: #a7f3d0;
+      padding: 7px 11px;
+      border-radius: 20px;
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
+
+    .quick-title {
+      font-size: 14px;
+      color: #d1d5db;
+      margin-bottom: 8px;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .quick {
+      margin: 0;
+      padding: 11px 8px;
+      background: #374151;
+      color: white;
+      font-size: 14px;
+      border: 1px solid #4b5563;
     }
 
     textarea {
       width: 100%;
-      min-height: 150px;
+      min-height: 140px;
       padding: 15px;
-      border-radius: 10px;
+      border-radius: 12px;
       border: 1px solid #4b5563;
       background: #111827;
       color: white;
       font-size: 16px;
       resize: vertical;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: #f59e0b;
     }
 
     button {
       width: 100%;
-      margin-top: 15px;
-      padding: 15px;
+      margin-top: 12px;
+      padding: 14px;
       border: none;
       border-radius: 10px;
       background: #f59e0b;
       color: #111827;
-      font-size: 17px;
+      font-size: 16px;
       font-weight: bold;
       cursor: pointer;
     }
 
     button:disabled {
-      opacity: 0.6;
+      opacity: .6;
     }
 
     #answer {
-      margin-top: 20px;
-      padding: 15px;
+      margin-top: 18px;
+      padding: 16px;
       background: #111827;
-      border-radius: 10px;
-      white-space: pre-wrap;
-      line-height: 1.5;
+      border-radius: 12px;
+      line-height: 1.6;
+      min-height: 58px;
+      overflow-wrap: anywhere;
+    }
+
+    .answer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .secondary {
+      background: #374151;
+      color: white;
     }
 
     .warning {
-      margin-top: 15px;
+      margin-top: 16px;
+      padding: 12px;
+      border-left: 4px solid #f59e0b;
+      background: #111827;
+      border-radius: 6px;
       font-size: 13px;
+      line-height: 1.5;
       color: #d1d5db;
+    }
+
+    .footer {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 12px;
+      padding: 20px;
+    }
+
+    @media (max-width: 480px) {
+      .quick-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .container {
+        padding: 12px;
+      }
     }
   </style>
 </head>
@@ -102,42 +176,81 @@
   <div class="container">
 
     <div class="card">
+      <div class="status">● AI Connected</div>
 
-      <h2>Ask SparkymateAU</h2>
+      <h2>What can I help with?</h2>
+
+      <div class="quick-title">Quick tools</div>
+
+      <div class="quick-grid">
+        <button class="quick" onclick="quickAsk('Calculate current from watts and voltage. Ask me for any missing values.')">
+          ⚡ Current
+        </button>
+
+        <button class="quick" onclick="quickAsk('Help me calculate voltage drop for an electrical circuit. Ask for the required details.')">
+          📉 Voltage Drop
+        </button>
+
+        <button class="quick" onclick="quickAsk('Help me troubleshoot an electrical fault safely. Ask me for symptoms and test results first.')">
+          🔧 Fault Finding
+        </button>
+
+        <button class="quick" onclick="quickAsk('Help me write a professional electrical job report. Ask me for the job details.')">
+          📝 Job Report
+        </button>
+      </div>
 
       <textarea
         id="question"
-        placeholder="Ask an electrical question..."
+        placeholder="Example: How many amps is 3200W at 240V?"
       ></textarea>
 
       <button id="askButton" onclick="askAI()">
         Ask SparkymateAU AI
       </button>
 
-      <div id="answer">
-        Connected to SparkymateAU AI.
+      <div id="answer">Ready. Ask me an electrical question.</div>
+
+      <div class="answer-actions">
+        <button class="secondary" onclick="copyAnswer()">Copy Answer</button>
+        <button class="secondary" onclick="clearChat()">Clear</button>
       </div>
 
       <div class="warning">
-        ⚠️ Stage 1 prototype. Always verify electrical work against
-        current Australian requirements, applicable standards,
+        ⚠️ <strong>Stage 1 prototype.</strong> Always verify electrical work
+        against current Australian requirements, applicable standards,
         manufacturer instructions and professional judgement.
+        SparkymateAU does not replace required testing or verification.
       </div>
+    </div>
 
+    <div class="footer">
+      SparkymateAU • Built for Australian electricians 🇦🇺
     </div>
 
   </div>
 
   <script>
-  function formatAnswer(text) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\$\$/g, "")
-    .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "$1 / $2")
-    .replace(/\\text\{([^{}]+)\}/g, "$1")
-    .replace(/\n/g, "<br>");
-  }
-    
+    function cleanAnswer(text) {
+      return (text || "")
+        .replace(/\*\*/g, "")
+        .replace(/###\s*/g, "")
+        .replace(/##\s*/g, "")
+        .replace(/#\s*/g, "")
+        .replace(/\$\$/g, "")
+        .replace(/\$/g, "")
+        .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "$1 / $2")
+        .replace(/\\text\{([^{}]+)\}/g, "$1")
+        .replace(/\\times/g, "×")
+        .replace(/\\cdot/g, "×");
+    }
+
+    function quickAsk(text) {
+      const question = document.getElementById("question");
+      question.value = text;
+      question.focus();
+    }
+
     async function askAI() {
       const question = document.getElementById("question").value.trim();
       const answer = document.getElementById("answer");
@@ -169,7 +282,8 @@
           throw new Error(data.error || "Something went wrong.");
         }
 
-        answer.innerHTML = formatAnswer(data.answer || "No answer returned.");
+        answer.textContent =
+          cleanAnswer(data.answer || "No answer returned.");
 
       } catch (error) {
         answer.textContent =
@@ -180,6 +294,33 @@
       button.disabled = false;
       button.textContent = "Ask SparkymateAU AI";
     }
+
+    async function copyAnswer() {
+      const text = document.getElementById("answer").textContent;
+
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        alert("Could not copy the answer automatically.");
+      }
+    }
+
+    function clearChat() {
+      document.getElementById("question").value = "";
+      document.getElementById("answer").textContent =
+        "Ready. Ask me an electrical question.";
+      document.getElementById("question").focus();
+    }
+
+    document.getElementById("question").addEventListener(
+      "keydown",
+      function(event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          askAI();
+        }
+      }
+    );
   </script>
 
 </body>
