@@ -129,6 +129,15 @@
   </div>
 
   <script>
+  function formatAnswer(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\$\$/g, "")
+    .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "$1 / $2")
+    .replace(/\\text\{([^{}]+)\}/g, "$1")
+    .replace(/\n/g, "<br>");
+  }
+    
     async function askAI() {
       const question = document.getElementById("question").value.trim();
       const answer = document.getElementById("answer");
@@ -160,7 +169,7 @@
           throw new Error(data.error || "Something went wrong.");
         }
 
-        answer.textContent = data.answer || "No answer returned.";
+        answer.innerHTML = formatAnswer(data.answer || "No answer returned.");
 
       } catch (error) {
         answer.textContent =
