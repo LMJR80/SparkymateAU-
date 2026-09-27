@@ -35,6 +35,7 @@ def ask():
         )
         return jsonify(answer=response.output_text)
     except Exception as exc:
+  app.logger.exception("OpenAI request failed")
         return jsonify(error="AI request failed.", detail=str(exc)), 500
 
 if __name__ == "__main__":
