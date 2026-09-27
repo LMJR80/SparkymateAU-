@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SparkymateAU</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111827;
+      color: white;
+    }
+
+    .header {
+      background: #f59e0b;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 6px 0 0;
+      color: #111827;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: #1f2937;
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #4b5563;
+      background: #111827;
+      color: white;
+      font-size: 16px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 15px;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      background: #f59e0b;
+      color: #111827;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+    }
+
+    #answer {
+      margin-top: 20px;
+      padding: 15px;
+      background: #111827;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .warning {
+      margin-top: 15px;
+      font-size: 13px;
+      color: #d1d5db;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>⚡ SparkymateAU</h1>
+    <p>AI assistant for Australian electricians</p>
+  </div>
+
+  <div class="container">
+
+    <div class="card">
+
+      <h2>Ask SparkymateAU</h2>
+
+      <textarea
+        id="question"
+        placeholder="Ask an electrical question..."
+      ></textarea>
+
+      <button id="askButton" onclick="askAI()">
+        Ask SparkymateAU AI
+      </button>
+
+      <div id="answer">
+        Connected to SparkymateAU AI.
+      </div>
+
+      <div class="warning">
+        ⚠️ Stage 1 prototype. Always verify electrical work against
+        current Australian requirements, applicable standards,
+        manufacturer instructions and professional judgement.
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    async function askAI() {
+      const question = document.getElementById("question").value.trim();
+      const answer = document.getElementById("answer");
+      const button = document.getElementById("askButton");
+
+      if (!question) {
+        answer.textContent = "Please enter a question first.";
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Thinking...";
+      answer.textContent = "SparkymateAU is thinking...";
+
+      try {
+        const response = await fetch("/api/ask", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: question
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Something went wrong.");
+        }
+
+        answer.textContent = data.answer || "No answer returned.";
+
+      } catch (error) {
+        answer.textContent =
+          "Error connecting to SparkymateAU AI:\n\n" +
+          error.message;
+      }
+
+      button.disabled = false;
+      button.textContent = "Ask SparkymateAU AI";
+    }
+  </script>
+
+</body>
+</html>
