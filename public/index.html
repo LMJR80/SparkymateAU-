@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f59e0b">
 <title>SparkymateAU</title>
+ <link rel="manifest" href="/manifest.webmanifest">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0b1220;color:#fff;font-family:Arial,sans-serif}header{background:#f59e0b;color:#111827;text-align:center;padding:18px}h1{margin:0;font-size:29px}header p{margin:5px 0;font-weight:bold}.wrap{max-width:800px;margin:auto;padding:12px}.tabs,.two,.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tabs{grid-template-columns:repeat(3,1fr);margin:10px 0}.panel{display:none}.panel.on{display:block}.card{background:#1f2937;padding:17px;border-radius:15px;margin:12px 0}button{width:100%;border:0;border-radius:9px;padding:13px;margin-top:9px;background:#f59e0b;color:#111827;font-size:15px;font-weight:bold}.tab,.grey{background:#374151;color:#fff}.tab.on{background:#f59e0b;color:#111827}.quick button{margin:0;background:#374151;color:#fff}label{display:block;margin:11px 0 5px;color:#d1d5db;font-size:14px}input,textarea,select{width:100%;padding:12px;border:1px solid #4b5563;border-radius:9px;background:#111827;color:#fff;font-size:16px}textarea{min-height:110px}.out{white-space:pre-wrap;background:#111827;padding:14px;border-radius:9px;margin-top:12px;line-height:1.5;overflow-wrap:anywhere}.small{color:#9ca3af;font-size:12px;line-height:1.4}.warn{border-left:4px solid #f59e0b;padding:10px;background:#111827;margin-top:12px;color:#d1d5db;font-size:12px}.saved{background:#111827;padding:10px;border-radius:8px;margin-top:8px;white-space:pre-wrap}.footer{text-align:center;color:#9ca3af;font-size:12px;padding:20px}@media(max-width:500px){.tabs{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
 </style>
@@ -247,6 +248,11 @@ function speak(){
 $("question").addEventListener("keydown",e=>{
  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();askAI()}
 });
+ if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js");
+  });
+ }
 </script>
 </body>
 </html>
