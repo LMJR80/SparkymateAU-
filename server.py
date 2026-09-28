@@ -20,6 +20,10 @@ Use plain text only. Do not use Markdown, headings, asterisks, dollar-sign math 
 def home():
     return send_from_directory("public", "index.html")
 
+@app.get("/<path:filename>")
+def public_file(filename):
+    return send_from_directory("public", filename)
+
 @app.post("/api/ask")
 def ask():
     data = request.get_json(silent=True) or {}
