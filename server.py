@@ -1,10 +1,19 @@
 import os
+import time
+from collections import defaultdict, deque
+from threading import Lock
+
 from flask import Flask, request, jsonify, send_from_directory
 from google import genai
 from google.genai import types
 
 app = Flask(__name__, static_folder="public")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
+
+RATE_LIMIT_REQUESTS = 20
+RATE_LIMIT_WINDOW = 60
+request_history = defaultdict(deque)
+rate_lock = Lock()
 
 SYSTEM_PROMPT = """You are SparkymateAU, an AI assistant designed for Australian electricians.
 Help users structure troubleshooting, calculations, job documentation and customer explanations.
@@ -18,83 +27,68 @@ Use plain text only. Do not use Markdown, headings, asterisks, dollar-sign math 
 Write calculations in simple readable form such as: Current = 3200 W / 240 V = 13.33 A.
 """
 
+
+def client_ip():
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
+
+def rate_limited():
+    now = time.monotonic()
+    ip = client_ip()
+
+    with rate_lock:
+        history = request_history[ip]
+
+        while history and now - history[0] >= RATE_LIMIT_WINDOW:
+            history.popleft()
+
+        if len(history) >= RATE_LIMIT_REQUESTS:
+            return True
+
+        history.append(now)
+        return False
+
+
 @app.after_request
 def security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), geolocation=()"
+
     if request.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
+
     return response
+
 
 @app.errorhandler(413)
 def request_too_large(_):
     return jsonify(error="Request is too large."), 413
 
+
+@app.get("/health")
+def health():
+    return jsonify(status="ok", service="SparkymateAU"), 200
+
+
 @app.get("/")
 def home():
     return send_from_directory("public", "index.html")
+
 
 @app.get("/<path:filename>")
 def public_file(filename):
     return send_from_directory("public", filename)
 
+
 @app.post("/api/ask")
 def ask():
-    if not request.is_json:
-        return jsonify(error="JSON request required."), 415
-
-    data = request.get_json(silent=True) or {}
-    message = data.get("message")
-
-    if not isinstance(message, str):
-        return jsonify(error="Message must be text."), 400
-
-    message = message.strip()
-
-    if not message:
-        return jsonify(error="Message is required."), 400
-
-    if len(message) > 6000:
-        return jsonify(
-            error="Message is too long. Please keep it under 6,000 characters."
-        ), 400
-
-    api_key = os.environ.get("GEMINI_API_KEY")
-
-    if not api_key:
-        app.logger.error("GEMINI_API_KEY is not configured")
-        return jsonify(error="AI service is temporarily unavailable."), 503
-
-    try:
-        client = genai.Client(api_key=api_key)
-
-        response = client.models.generate_content(
-            model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite"),
-            contents=message,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.2,
-            ),
+    if rate_limited():
+        response = jsonify(
+            error="Too many AI requests. Please wait a moment and try again."
         )
-
-        answer = (response.text or "").strip()
-
-        if not answer:
-            return jsonify(
-                error="The AI returned an empty response. Please try again."
-            ), 502
-
-        return jsonify(answer=answer)
-
-    except Exception:
-        app.logger.exception("Gemini request failed")
-        return jsonify(
-            error="AI service could not complete the request. Please try again."
-        ), 502
-
-if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", "8000"))
-    )
+        response.status_code =
