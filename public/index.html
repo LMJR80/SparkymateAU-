@@ -189,9 +189,36 @@ function report(){
 }
 
 function quote(){
- let h=num("qh")||0,r=num("qr")||0,m=num("qm")||0,mu=num("qmu")||0,o=num("qo")||0;
- let labour=h*r,materials=m*(1+mu/100),sub=labour+materials+o,g=$("gst").checked?sub*.1:0,total=sub+g;
- $("qout").textContent="Labour: $"+labour.toFixed(2)+"\nMaterials: $"+materials.toFixed(2)+"\nOther: $"+o.toFixed(2)+"\nSubtotal: $"+sub.toFixed(2)+"\nGST: $"+g.toFixed(2)+"\nTOTAL: $"+total.toFixed(2);
+ let h=num("qh"),r=num("qr"),m=num("qm"),mu=num("qmu"),o=num("qo");
+ h=Number.isFinite(h)?h:0;
+ r=Number.isFinite(r)?r:0;
+ m=Number.isFinite(m)?m:0;
+ mu=Number.isFinite(mu)?mu:0;
+ o=Number.isFinite(o)?o:0;
+
+ if([h,r,m,mu,o].some(x=>x<0)){
+  $("qout").textContent="Enter valid non-negative quote values.";
+  return;
+ }
+
+ let labour=h*r;
+ let materials=m*(1+mu/100);
+ let sub=labour+materials+o;
+ let g=$("gst").checked?sub*.1:0;
+ let total=sub+g;
+
+ if(![labour,materials,sub,g,total].every(Number.isFinite)){
+  $("qout").textContent="Quote values are too large.";
+  return;
+ }
+
+ $("qout").textContent=
+  "Labour: $"+labour.toFixed(2)+
+  "\nMaterials: $"+materials.toFixed(2)+
+  "\nOther: $"+o.toFixed(2)+
+  "\nSubtotal: $"+sub.toFixed(2)+
+  "\nGST: $"+g.toFixed(2)+
+  "\nTOTAL: $"+total.toFixed(2);
 }
 
 function promptQ(t){$("question").value=t;$("question").focus()}
@@ -199,7 +226,7 @@ function clearAI(){$("question").value="";$("answer").textContent="Ready. Ask me
 
 async function askAI(){
  let q=$("question").value.trim(),b=$("ask");
- if(!q){$("answer").textContent="Please enter a question first.";return}
+ if(!q){$("answer").textContent="Please enter a question first.";return}if(q.length>6000){$("answer").textContent="Please keep your question under 6,000 characters.";return}
  b.disabled=true;b.textContent="Thinking...";$("answer").textContent="SparkymateAU is thinking...";
  try{
   let r=await fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q})});
