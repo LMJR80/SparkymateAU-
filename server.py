@@ -89,9 +89,9 @@ def public_file(filename):
 def ask():
     if rate_limited():
         response = jsonify(
-            error="Too many AI requests. Please wait a moment and try again."
+          error="Too many AI requests. Please wait a moment and try again."
         )
-                response.status_code = 429
+        response.status_code = 429
         response.headers["Retry-After"] = "60"
         return response
 
