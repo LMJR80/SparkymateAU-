@@ -91,4 +91,68 @@ def ask():
         response = jsonify(
             error="Too many AI requests. Please wait a moment and try again."
         )
-        response.status_code =
+                response.status_code = 429
+        response.headers["Retry-After"] = "60"
+        return response
+
+    if not request.is_json:
+        return jsonify(error="JSON request required."), 415
+
+    data = request.get_json(silent=True) or {}
+    message = data.get("message")
+
+    if not isinstance(message, str):
+        return jsonify(error="Message must be text."), 400
+
+    message = message.strip()
+
+    if not message:
+        return jsonify(error="Message is required."), 400
+
+    if len(message) > 6000:
+        return jsonify(
+            error="Message is too long. Please keep it under 6,000 characters."
+        ), 400
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+
+    if not api_key:
+        app.logger.error("GEMINI_API_KEY is not configured")
+        return jsonify(error="AI service is temporarily unavailable."), 503
+
+    try:
+        client = genai.Client(api_key=api_key)
+
+        response = client.models.generate_content(
+            model=os.environ.get(
+                "GEMINI_MODEL",
+                "gemini-2.5-flash-lite"
+            ),
+            contents=message,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.2,
+            ),
+        )
+
+        answer = (response.text or "").strip()
+
+        if not answer:
+            return jsonify(
+                error="The AI returned an empty response. Please try again."
+            ), 502
+
+        return jsonify(answer=answer)
+
+    except Exception:
+        app.logger.exception("Gemini request failed")
+        return jsonify(
+            error="AI service could not complete the request. Please try again."
+        ), 502
+
+
+if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", "8000"))
+    )
