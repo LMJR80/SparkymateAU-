@@ -162,16 +162,53 @@ function three(){
 }
 
 function ohm(){
+function ohm(){
  let V=num("ov"),I=num("oi"),R=num("or"),P=num("op");
  let v=Number.isFinite(V),i=Number.isFinite(I),r=Number.isFinite(R),p=Number.isFinite(P);
- if(v&&i){R=I?V/I:NaN;P=V*I}
- else if(v&&r&&R){I=V/R;P=V*I}
- else if(i&&r){V=I*R;P=V*I}
- else if(v&&p&&V){I=P/V;R=I?V/I:NaN}
- else if(i&&p&&I){V=P/I;R=V/I}
- else if(r&&p&&R>0&&P>=0){I=Math.sqrt(P/R);V=I*R}
- else{$("oo").textContent="Enter two compatible values.";return}
- $("oo").textContent="Voltage: "+f(V,"V")+"\nCurrent: "+f(I,"A")+"\nResistance: "+f(R,"Ω")+"\nPower: "+f(P,"W");
+
+ if(v&&i){
+  if(I===0){
+   if(V===0){$("oo").textContent="Voltage and current cannot both be zero for this calculation.";return}
+   $("oo").textContent="Resistance is undefined when current is zero.";return
+  }
+  R=V/I;P=V*I;
+ }
+ else if(v&&r){
+  if(R===0){$("oo").textContent="Resistance must be above zero for this calculation.";return}
+  I=V/R;P=V*I;
+ }
+ else if(i&&r){
+  if(R<0){$("oo").textContent="Resistance cannot be negative.";return}
+  V=I*R;P=V*I;
+ }
+ else if(v&&p){
+  if(V===0){$("oo").textContent="Voltage must be above zero for this calculation.";return}
+  I=P/V;
+  if(I===0){$("oo").textContent="Cannot calculate resistance from zero current.";return}
+  R=V/I;
+ }
+ else if(i&&p){
+  if(I===0){$("oo").textContent="Current must be above zero for this calculation.";return}
+  V=P/I;R=V/I;
+ }
+ else if(r&&p){
+  if(R<=0||P<0){$("oo").textContent="Resistance must be above zero and power cannot be negative.";return}
+  I=Math.sqrt(P/R);V=I*R;
+ }
+ else{
+  $("oo").textContent="Enter two compatible values.";
+  return
+ }
+
+ if(![V,I,R,P].every(Number.isFinite)){
+  $("oo").textContent="Unable to calculate from those values.";
+  return
+ }
+
+ $("oo").textContent="Voltage: "+f(V,"V")+
+  "\nCurrent: "+f(I,"A")+
+  "\nResistance: "+f(R,"Ω")+
+  "\nPower: "+f(P,"W");
 }
 
 function vd(){
@@ -226,17 +263,59 @@ function clearAI(){$("question").value="";$("answer").textContent="Ready. Ask me
 
 async function askAI(){
  let q=$("question").value.trim(),b=$("ask");
- if(!q){$("answer").textContent="Please enter a question first.";return}if(q.length>6000){$("answer").textContent="Please keep your question under 6,000 characters.";return}
- b.disabled=true;b.textContent="Thinking...";$("answer").textContent="SparkymateAU is thinking...";
+
+ if(!q){
+  $("answer").textContent="Please enter a question first.";
+  return
+ }
+
+ if(q.length>6000){
+  $("answer").textContent="Please keep your question under 6,000 characters.";
+  return
+ }
+
+ b.disabled=true;
+ b.textContent="Thinking...";
+ $("answer").textContent="SparkymateAU is thinking...";
+
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),110000);
+
  try{
-  let r=await fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q})});
+  let r=await fetch("/api/ask",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({message:q}),
+   signal:controller.signal
+  });
+
   let ct=r.headers.get("content-type")||"";
-  if(!ct.includes("application/json"))throw Error("The AI service returned a server error.");
+
+  if(!ct.includes("application/json"))
+   throw Error("The AI service returned a server error.");
+
   let d=await r.json();
-  if(!r.ok)throw Error(d.error||"AI request failed.");
+
+  if(!r.ok)
+   throw Error(d.error||"AI request failed.");
+
   $("answer").textContent=d.answer||"No answer returned.";
- }catch(e){$("answer").textContent="SparkymateAU couldn't complete that request.\n\n"+e.message+"\n\nPlease try again."}
- finally{b.disabled=false;b.textContent="Ask SparkymateAU AI"}
+
+ }catch(e){
+  let msg=e.name==="AbortError"
+   ?"The AI request took too long. Please try again."
+   :e.message;
+
+  $("answer").textContent=
+   "SparkymateAU couldn't complete that request.\n\n"+
+   msg+
+   "\n\nPlease try again.";
+
+ }finally{
+  clearTimeout(timer);
+  b.disabled=false;
+  b.textContent="Ask SparkymateAU AI";
+ }
 }
 
 async function copy(id){
