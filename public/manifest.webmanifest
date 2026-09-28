@@ -1,0 +1,18 @@
+{
+  "name": "SparkymateAU",
+  "short_name": "SparkymateAU",
+  "description": "Smart tools for Australian electricians",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "/file_00000000440481fab52a2709d261388f.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
