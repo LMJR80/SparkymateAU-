@@ -58,6 +58,11 @@ textarea{min-height:110px;resize:vertical}
 .marketcard p{margin:0;color:var(--muted);line-height:1.45;flex:1}
 .marketcard a,.marketshop{display:block;text-align:center;text-decoration:none}
 .marketcard a{margin-top:8px}
+.directorygrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.directorycard{margin:0;display:flex;flex-direction:column;gap:10px}
+.directorycard h3,.directorycard p{margin:0}
+.directorycard p{color:var(--muted);line-height:1.45;flex:1}
+.directorycard a{display:block;text-align:center;text-decoration:none}
 .footer{text-align:center;color:#d7eaff;font-size:12px;padding:24px}
 .mobiletabs{display:none}
 
@@ -68,9 +73,9 @@ textarea{min-height:110px;resize:vertical}
 .layout{display:block}
 .main{padding:16px 14px 90px}
 .homegrid{grid-template-columns:1fr 1fr}
-.mobiletabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));position:fixed;z-index:20;left:0;right:0;bottom:0;background:#032653;padding:7px 5px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -5px 18px rgba(0,0,0,.22)}
+.mobiletabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:fixed;z-index:20;left:0;right:0;bottom:0;background:#032653;padding:7px 5px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -5px 18px rgba(0,0,0,.22)}
 .mobiletabs button{border:0;background:transparent;color:#d7eaff;border-radius:9px;padding:7px 2px;font-size:10px;font-weight:bold}
-.mobiletabs button[data-tab="marketplace"]{font-size:9px}
+.mobiletabs button[data-tab="marketplace"],.mobiletabs button[data-tab="directory"]{font-size:8px}
 .mobiletabs button.on{background:#0878ee;color:#fff}
 .mobiletabs span{display:block;font-size:18px;margin-bottom:3px}
 }
@@ -100,6 +105,7 @@ textarea{min-height:110px;resize:vertical}
 .mobiletabs{padding-top:5px}
 .mobiletabs button{padding:5px 2px}
 .mobiletabs span{font-size:17px}
+.marketgrid,.directorygrid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -124,6 +130,7 @@ textarea{min-height:110px;resize:vertical}
 <button class="navbtn" data-tab="report" onclick="tab('report')">▤ &nbsp; Job Reports</button>
 <button class="navbtn" data-tab="quote" onclick="tab('quote')">$ &nbsp; Quote Calculator</button>
 <button class="navbtn" data-tab="marketplace" onclick="tab('marketplace')">🛍 &nbsp; Marketplace</button>
+<button class="navbtn" data-tab="directory" onclick="tab('directory')">📍 &nbsp; Wholesaler Directory</button>
 <button class="navbtn" data-tab="saved" onclick="tab('saved')">☆ &nbsp; Saved Items</button>
 </nav>
 </aside>
@@ -184,6 +191,13 @@ textarea{min-height:110px;resize:vertical}
 <h3>Marketplace</h3>
 <p>Browse printable labels, testing records and electrician templates.</p>
 <button onclick="tab('marketplace')">Open Marketplace →</button>
+</article>
+
+<article class="feature">
+<div class="icon">📍</div>
+<h3>Wholesaler Directory</h3>
+<p>Find electrical wholesalers near a suburb or postcode, then check official branch locators.</p>
+<button onclick="tab('directory')">Find Wholesalers →</button>
 </article>
 
 </div>
@@ -401,6 +415,29 @@ Confirm your own pricing, tax treatment and invoicing requirements.
 </div>
 </section>
 
+<section id="directory" class="panel">
+<div class="card">
+<h2>Electrical Wholesaler Directory</h2>
+<p>Find nearby Australian electrical wholesalers by suburb or postcode. Check a supplier's official locator for its current address, hours and stock.</p>
+<form onsubmit="findWholesalers(event)">
+<label for="wholesalerLocation">Suburb or postcode</label>
+<input id="wholesalerLocation" placeholder="e.g. Parramatta or 2150" autocomplete="address-level2" required>
+<label for="wholesalerState">State or territory (optional)</label>
+<select id="wholesalerState">
+<option value="">All Australia</option><option>ACT</option><option>NSW</option><option>NT</option><option>QLD</option><option>SA</option><option>TAS</option><option>VIC</option><option>WA</option>
+</select>
+<button class="primary" type="submit">Search nearby wholesalers →</button>
+</form>
+<p class="small">Nearby search opens Google Maps in a new tab. Confirm branch details with the supplier before travelling.</p>
+</div>
+<div class="directorygrid">
+<article class="card directorycard"><h3>Middy's Electrical</h3><p>Search Middy's branches around Australia.</p><a class="primary" href="https://www.middys.com.au/branch-locator" target="_blank" rel="noopener noreferrer">Official branch locator →</a></article>
+<article class="card directorycard"><h3>CNW Electrical Wholesale</h3><p>Find a CNW branch and its current contact details.</p><a class="primary" href="https://shop.cnw.com.au/store-finder" target="_blank" rel="noopener noreferrer">Official store finder →</a></article>
+<article class="card directorycard"><h3>Rexel Australia</h3><p>Find Rexel and its associated branch network.</p><a class="primary" href="https://www.rexel.com.au/are/store-finder" target="_blank" rel="noopener noreferrer">Official branch locator →</a></article>
+<article class="card directorycard"><h3>MM Electrical</h3><p>Search MM Electrical group stores by suburb or postcode.</p><a class="primary" href="https://www.mmem.com.au/stores" target="_blank" rel="noopener noreferrer">Official store locator →</a></article>
+</div>
+</section>
+
 <section id="saved" class="panel">
 <div class="card">
 <h2>Saved Items</h2>
@@ -447,6 +484,10 @@ SparkymateAU • Built for Australian electricians 🇦🇺
 <button class="mobbtn" data-tab="marketplace" onclick="tab('marketplace')">
 <span>🛍</span>Marketplace
 </button>
+
+<button class="mobbtn" data-tab="directory" onclick="tab('directory')">
+<span>📍</span>Directory
+</button>
 </nav>
 
 <script>
@@ -476,6 +517,15 @@ function tab(id){
  });
 
  if(id==="saved")renderSaved();
+}
+
+function findWholesalers(event){
+ event.preventDefault();
+ const location=$("wholesalerLocation").value.trim();
+ if(!location)return;
+ const state=$("wholesalerState").value;
+ const query=["electrical wholesalers near",location,state,"Australia"].filter(Boolean).join(" ");
+ window.open("https://www.google.com/maps/search/"+encodeURIComponent(query),"_blank","noopener,noreferrer");
 }
 
 function topAsk(){
