@@ -181,7 +181,11 @@ def get_openai_answer(message):
     if OpenAI is None:
         raise RuntimeError("OpenAI SDK is not installed")
 
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
+    client = OpenAI(api_key=api_key)
     response = client.responses.create(
         model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
         input=message,
@@ -190,20 +194,36 @@ def get_openai_answer(message):
         max_output_tokens=1800,
     )
 
-    answer = getattr(response, "output_text", None)
-    if answer:
-        return answer.strip()
+    if hasattr(response, "output_text") and response.output_text:
+        return response.output_text.strip()
 
+    output = getattr(response, "output", None) or []
     parts = []
-    for item in getattr(response, "output", []) or []:
+    for item in output:
         for content in getattr(item, "content", []) or []:
             text = getattr(content, "text", None)
             if text:
-                parts.append(text)
-    answer = "".join(parts).strip()
-    if not answer:
-        raise RuntimeError("The OpenAI response was empty")
-    return answer
+                parts.append(str(text))
+    if parts:
+        answer = "".join(parts).strip()
+        if answer:
+            return answer
+
+    if hasattr(response, "choices") and response.choices:
+        choice = response.choices[0]
+        if hasattr(choice, "message"):
+            msg = getattr(choice.message, "content", "")
+            if isinstance(msg, list):
+                text = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in msg
+                )
+                if text:
+                    return text.strip()
+            if isinstance(msg, str) and msg.strip():
+                return msg.strip()
+
+    raise RuntimeError("The OpenAI response was empty")
 
 
 def get_gemini_answer(message):
@@ -229,6 +249,14 @@ def get_gemini_answer(message):
     return answer
 
 
+def get_ai_answer(message):
+    if os.environ.get("OPENAI_API_KEY"):
+        return get_openai_answer(message)
+    if os.environ.get("GEMINI_API_KEY"):
+        return get_gemini_answer(message)
+    raise RuntimeError("No AI API key configured")
+
+
 @app.post("/api/ask")
 def ask():
     if rate_limited():
@@ -251,17 +279,8 @@ def ask():
     if len(message) > 6000:
         return jsonify(error="Message is too long. Please keep it under 6,000 characters."), 400
 
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    gemini_key = os.environ.get("GEMINI_API_KEY")
-    if not openai_key and not gemini_key:
-        app.logger.error("No AI API key configured: OPENAI_API_KEY or GEMINI_API_KEY")
-        return jsonify(error="AI service is temporarily unavailable."), 503
-
     try:
-        if openai_key:
-            answer = get_openai_answer(message)
-        else:
-            answer = get_gemini_answer(message)
+        answer = get_ai_answer(message)
         return jsonify(answer=answer)
     except Exception:
         app.logger.exception("AI request failed")
