@@ -5,8 +5,18 @@ from threading import Lock
 
 import psycopg
 from flask import Flask, request, jsonify, send_from_directory
-from google import genai
-from google.genai import types
+
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:  # pragma: no cover
+    genai = None
+    types = None
+
+try:
+    from openai import OpenAI
+except ImportError:  # pragma: no cover
+    OpenAI = None
 
 app = Flask(__name__, static_folder="public")
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
@@ -167,6 +177,58 @@ def public_file(filename):
     return send_from_directory("public", filename)
 
 
+def get_openai_answer(message):
+    if OpenAI is None:
+        raise RuntimeError("OpenAI SDK is not installed")
+
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    response = client.responses.create(
+        model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+        input=message,
+        instructions=SYSTEM_PROMPT,
+        temperature=0.2,
+        max_output_tokens=1800,
+    )
+
+    answer = getattr(response, "output_text", None)
+    if answer:
+        return answer.strip()
+
+    parts = []
+    for item in getattr(response, "output", []) or []:
+        for content in getattr(item, "content", []) or []:
+            text = getattr(content, "text", None)
+            if text:
+                parts.append(text)
+    answer = "".join(parts).strip()
+    if not answer:
+        raise RuntimeError("The OpenAI response was empty")
+    return answer
+
+
+def get_gemini_answer(message):
+    if genai is None or types is None:
+        raise RuntimeError("Google GenAI SDK is not installed")
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not configured")
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite"),
+        contents=message,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            temperature=0.2,
+        ),
+    )
+    answer = (response.text or "").strip()
+    if not answer:
+        raise RuntimeError("The Gemini response was empty")
+    return answer
+
+
 @app.post("/api/ask")
 def ask():
     if rate_limited():
@@ -189,27 +251,20 @@ def ask():
     if len(message) > 6000:
         return jsonify(error="Message is too long. Please keep it under 6,000 characters."), 400
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        app.logger.error("GEMINI_API_KEY is not configured")
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not openai_key and not gemini_key:
+        app.logger.error("No AI API key configured: OPENAI_API_KEY or GEMINI_API_KEY")
         return jsonify(error="AI service is temporarily unavailable."), 503
 
     try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite"),
-            contents=message,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.2,
-            ),
-        )
-        answer = (response.text or "").strip()
-        if not answer:
-            return jsonify(error="The AI returned an empty response. Please try again."), 502
+        if openai_key:
+            answer = get_openai_answer(message)
+        else:
+            answer = get_gemini_answer(message)
         return jsonify(answer=answer)
     except Exception:
-        app.logger.exception("Gemini request failed")
+        app.logger.exception("AI request failed")
         return jsonify(error="AI service could not complete the request. Please try again."), 502
 
 
