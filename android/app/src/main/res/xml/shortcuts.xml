@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="open_app"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher"
+        android:shortcutShortLabel="SparkymateAU"
+        android:shortcutLongLabel="Open SparkymateAU">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.sparkymateau.app"
+            android:targetClass="com.sparkymateau.app.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="ask_ai"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher"
+        android:shortcutShortLabel="Ask SparkymateAU"
+        android:shortcutLongLabel="Ask SparkymateAU AI Assistant">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.sparkymateau.app"
+            android:targetClass="com.sparkymateau.app.MainActivity"
+            android:data="https://sparkymateau.com/ai" />
+    </shortcut>
+</shortcuts>

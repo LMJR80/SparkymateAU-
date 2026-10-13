@@ -12,6 +12,12 @@
         android:theme="@style/Theme.SparkymateAU"
         android:usesCleartextTraffic="false"
         android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- Static app shortcuts (Android 7.1+). Users can add these to their home screen. -->
+        <meta-data
+            android:name="android.app.shortcuts"
+            android:resource="@xml/shortcuts" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
