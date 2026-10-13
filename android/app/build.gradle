@@ -7,6 +7,15 @@ android {
     namespace = "com.sparkymateau.app"
     compileSdk = 34
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../sparkymateau-release.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = "sparkymateau"
+            keyPassword = System.getenv("KEYSTORE_KEY_PASSWORD")
+        }
+    }
+
     defaultConfig {
         applicationId = "com.sparkymateau.app"
         minSdk = 24
@@ -20,6 +29,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
