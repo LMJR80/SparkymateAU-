@@ -1,6 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="primary_blue">#0878ee</color>
-    <color name="primary_dark">#062a59</color>
-    <color name="surface">#FFFFFFFF</color>
-    <color name="on_surface">#082b5c</color>
 </resources>
