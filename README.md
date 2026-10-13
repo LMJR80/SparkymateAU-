@@ -1,12 +1,12 @@
 # SparkymateAU — Stage 1
 
-This version connects the SparkymateAU web interface to a real OpenAI API backend.
+This version connects the SparkymateAU web interface to a real AI backend.
 
 ## Architecture
 
-Browser -> `/api/ask` -> Python/Flask backend -> OpenAI Responses API -> answer
+Browser -> `/api/ask` -> Python/Flask backend -> OpenAI or Gemini -> answer
 
-The OpenAI API key is **never placed in the browser**.
+The API key is never placed in the browser.
 
 ## Run locally
 
@@ -19,16 +19,23 @@ The OpenAI API key is **never placed in the browser**.
    - macOS/Linux: `source .venv/bin/activate`
 5. Install packages:
    `pip install -r requirements.txt`
-6. Set your API key:
-   - macOS/Linux: `export OPENAI_API_KEY="your-key"`
-   - Windows PowerShell: `$env:OPENAI_API_KEY="your-key"`
-7. Start:
+6. Set an AI API key:
+   - For OpenAI/ChatGPT:
+     - macOS/Linux: `export OPENAI_API_KEY="your-key"`
+     - Windows PowerShell: `$env:OPENAI_API_KEY="your-key"`
+   - For Gemini:
+     - macOS/Linux: `export GEMINI_API_KEY="your-key"`
+     - Windows PowerShell: `$env:GEMINI_API_KEY="your-key"`
+7. Optional: choose a model:
+   - `export OPENAI_MODEL="gpt-4o-mini"`
+   - `export GEMINI_MODEL="gemini-2.5-flash-lite"`
+8. Start:
    `python server.py`
-8. Open:
+9. Open:
    `http://localhost:8000`
 
 ## Important
 
-Do not put an OpenAI API key directly into `public/index.html` or any client-side JavaScript.
+Do not put an API key directly into `public/index.html` or any client-side JavaScript.
 
 Stage 1 intentionally has no Australian standards/document retrieval system yet. It is a real AI connection, but electrical answers still require professional verification.
