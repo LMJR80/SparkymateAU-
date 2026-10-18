@@ -63,6 +63,7 @@ textarea{min-height:110px;resize:vertical}
 .directorycard h3,.directorycard p{margin:0}
 .directorycard p{color:var(--muted);line-height:1.45;flex:1}
 .directorycard a{display:block;text-align:center;text-decoration:none}
+.jobs-intro{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-bottom:16px}.jobs-hero{background:linear-gradient(125deg,#052d60,#0878ee);color:#fff;border-radius:18px;padding:26px;box-shadow:var(--shadow)}.jobs-hero h2{font-size:30px;line-height:1.1;margin:0 0 10px}.jobs-hero p{line-height:1.5;margin:0;max-width:650px;color:#e4f1ff}.jobs-hero .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:bold;margin-bottom:12px}.jobs-actions{display:grid;grid-template-columns:1fr 1fr;gap:16px}.jobcard{display:flex;flex-direction:column;gap:10px}.jobcard h3{margin:0}.jobcard p{margin:0;color:var(--muted);line-height:1.45}.joblist-empty{background:#f3f8ff;border:1px dashed #9dbfe0;border-radius:14px;padding:18px;color:#52647a}.joblist-empty strong{display:block;color:#082b5c;margin-bottom:5px}.member-box{background:#e5f2ff;border:1px solid #b7d9fa;border-radius:14px;padding:16px;margin-top:auto}.member-box strong{display:block;margin-bottom:6px}.service-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}.service-step{background:#fff;border-radius:14px;padding:16px;box-shadow:var(--shadow)}.service-step b{display:block;margin-bottom:6px}.service-step p{margin:0;color:var(--muted);font-size:13px;line-height:1.4}
 .footer{text-align:center;color:#d7eaff;font-size:12px;padding:24px}
 .mobiletabs{display:none}
 
@@ -73,7 +74,7 @@ textarea{min-height:110px;resize:vertical}
 .layout{display:block}
 .main{padding:16px 14px 90px}
 .homegrid{grid-template-columns:1fr 1fr}
-.mobiletabs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:fixed;z-index:20;left:0;right:0;bottom:0;background:#032653;padding:7px 5px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -5px 18px rgba(0,0,0,.22)}
+.mobiletabs{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));position:fixed;z-index:20;left:0;right:0;bottom:0;background:#032653;padding:7px 5px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -5px 18px rgba(0,0,0,.22)}
 .mobiletabs button{border:0;background:transparent;color:#d7eaff;border-radius:9px;padding:7px 2px;font-size:10px;font-weight:bold}
 .mobiletabs button[data-tab="marketplace"],.mobiletabs button[data-tab="directory"]{font-size:8px}
 .mobiletabs button.on{background:#0878ee;color:#fff}
@@ -81,6 +82,7 @@ textarea{min-height:110px;resize:vertical}
 }
 
 @media(max-width:600px){
+.jobs-intro,.jobs-actions{grid-template-columns:1fr}.jobs-hero{padding:19px}.jobs-hero h2{font-size:24px}.service-steps{grid-template-columns:1fr}
 .topbar{min-height:62px;padding:7px 14px}
 .brand{gap:7px}
 .bolt{font-size:31px}
@@ -113,7 +115,7 @@ textarea{min-height:110px;resize:vertical}
 <header class="topbar">
 <div class="brand">
 <div class="bolt">⚡</div>
-<div><h1>Sparkymate<span>AU</span></h1><p>AI TOOLS FOR AUSTRALIAN ELECTRICIANS</p></div>
+<div><h1>Sparkymate<span>AU</span></h1><p>LOCAL ELECTRICAL JOBS + FREE TRADE TOOLS</p></div>
 </div>
 <div class="topask">
 <input id="topQuestion" placeholder="Ask SparkymateAU anything...">
@@ -125,6 +127,7 @@ textarea{min-height:110px;resize:vertical}
 <aside class="sidebar">
 <nav class="nav">
 <button class="navbtn on" data-tab="home" onclick="tab('home')">⌂ &nbsp; Home</button>
+<button class="navbtn" data-tab="jobs" onclick="tab('jobs')">⚡ &nbsp; Find or Post Jobs</button>
 <button class="navbtn" data-tab="ai" onclick="tab('ai')">💬 &nbsp; AI Assistant</button>
 <button class="navbtn" data-tab="calc" onclick="tab('calc')">▦ &nbsp; Calculators</button>
 <button class="navbtn" data-tab="report" onclick="tab('report')">▤ &nbsp; Job Reports</button>
@@ -137,12 +140,14 @@ textarea{min-height:110px;resize:vertical}
 
 <main class="main">
 <div class="hero">
-<h2>Welcome to Sparkymate<span>AU</span></h2>
-<p>Your AI-powered toolkit for Australian electricians</p>
+<h2>Find work. Get electrical jobs done.</h2>
+<p>SparkymateAU connects customers who need electrical work with local electricians. Free trade tools stay included.</p>
 </div>
 
 <section id="home" class="panel on">
 <div class="homegrid">
+
+<article class="feature"><div class="icon">⚡</div><h3>Electrical Jobs</h3><p>Find local work to take on, or post a job when you need an electrician.</p><button onclick="tab('jobs')">Explore the Job Hub →</button></article>
 
 <article class="feature">
 <div class="icon">💬</div>
@@ -203,11 +208,17 @@ textarea{min-height:110px;resize:vertical}
 </div>
 
 <div class="banner">
-<strong>💡 Built for Australian electricians</strong>
-<p>Always verify current standards, manufacturer information, site conditions and required testing.</p>
+<strong>⚡ Work for tradies. Reliable help for customers.</strong>
+<p>Job access requires a paid electrician membership. SparkymateAU’s existing AI, calculators, reports and quote tools remain free.</p>
 </div>
 </section>
 
+<section id="jobs" class="panel">
+<div class="jobs-intro"><div class="jobs-hero"><span class="pill">SPARKYMATEAU JOB HUB</span><h2>Electrical work, closer to home.</h2><p>Customers can request licensed electrical work. Local electricians can discover opportunities and, with an active membership, accept jobs that suit them.</p></div><div class="card" style="margin:0"><h2>Simple for both sides</h2><p>Post a job request at no cost. Electricians keep using the existing SparkymateAU tools for free.</p><p class="small">A paid membership will be required to accept jobs. Prices and checkout will be set before the job board opens.</p></div></div>
+<div class="jobs-actions"><article class="card jobcard"><h2>For electricians</h2><h3>Find work and take jobs</h3><p>Browse local requests, check the job details and choose which work is right for you.</p><div class="joblist-empty"><strong>Job listings will appear here</strong>The live job board is being prepared. No customer requests are published in this preview.</div><div class="member-box"><strong>Job access membership</strong>A paid subscription will be required before an electrician can accept a job. Your free AI assistant, calculators, reports and quote tools stay available without it.<button class="primary" type="button" onclick="membershipInfo()">See membership details</button></div></article>
+<article class="card jobcard"><h2>For customers</h2><h3>Need electrical work done?</h3><p>Describe the work, where it is and when you need help. SparkymateAU will match the request with local electricians.</p><label for="jobType">Type of work</label><select id="jobType"><option>Repair or fault finding</option><option>Installation or upgrade</option><option>Safety check or testing</option><option>Quote for planned work</option><option>Other electrical work</option></select><label for="jobArea">Suburb or postcode</label><input id="jobArea" placeholder="e.g. Parramatta or 2150"><label for="jobDetails">What needs to be done?</label><textarea id="jobDetails" placeholder="Describe the work and any timing requirements"></textarea><button class="primary" type="button" onclick="jobRequestPreview()">Start a job request</button><p class="small">This preview does not publish or send a request. Customer job posting will be enabled when the live marketplace is connected.</p><div id="jobRequestMessage" class="out" aria-live="polite" hidden></div></article></div>
+<div class="service-steps"><div class="service-step"><b>1. Customer posts a request</b><p>Share the job type, location and details. Posting a request is free.</p></div><div class="service-step"><b>2. Local electricians respond</b><p>Members browse available work and choose suitable jobs to accept.</p></div><div class="service-step"><b>3. Get the work sorted</b><p>Customer and electrician coordinate the visit and agree on the work.</p></div></div>
+</section>
 <section id="ai" class="panel">
 <div class="card">
 <h2>AI Assistant</h2>
@@ -465,6 +476,7 @@ SparkymateAU • Built for Australian electricians 🇦🇺
 <span>⌂</span>Home
 </button>
 
+<button class="mobbtn" data-tab="jobs" onclick="tab('jobs')"><span>⚡</span>Jobs</button>
 <button class="mobbtn" data-tab="ai" onclick="tab('ai')">
 <span>💬</span>AI
 </button>
@@ -519,6 +531,12 @@ function tab(id){
  if(id==="saved")renderSaved();
 }
 
+function membershipInfo(){
+ alert("Job subscriptions are not active yet. Paid access and Stripe checkout will be connected before electricians can accept live jobs. All existing tools remain free.");
+}
+function jobRequestPreview(){
+ const box=$("jobRequestMessage");box.hidden=false;box.textContent="This request has not been sent. Customer job posting will go live when the marketplace is connected.";
+}
 function findWholesalers(event){
  event.preventDefault();
  const location=$("wholesalerLocation").value.trim();
