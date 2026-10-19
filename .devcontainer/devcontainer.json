@@ -1,0 +1,36 @@
+{
+  "name": "SparkymateAU",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "forwardPorts": [8000, 5432, 6379],
+  "portsAttributes": {
+    "8000": {
+      "label": "SparkymateAU web app",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "Postgres",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "python -m venv .venv && . .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  },
+  "remoteEnv": {
+    "DATABASE_URL": "postgresql://sparkymate:password@localhost:5432/sparkymateau",
+    "REDIS_URL": "redis://localhost:6379/0",
+    "TRUST_PROXY": "true"
+  }
+}
