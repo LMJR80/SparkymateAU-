@@ -18,11 +18,33 @@ try:
 except ImportError:  # pragma: no cover
     OpenAI = None
 
-app = Flask(__name__, static_folder="public")
-app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
+# Optional proxy fix will be applied based on TRUST_PROXY env var
+try:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+except Exception:  # pragma: no cover
+    ProxyFix = None
 
-RATE_LIMIT_REQUESTS = 20
-RATE_LIMIT_WINDOW = 60
+# Optional Redis for cross-process rate limiting
+try:
+    import redis
+except Exception:  # pragma: no cover
+    redis = None
+
+# Create app
+app = Flask(__name__, static_folder="public")
+# Max content length (bytes). Default to 32 MB. Can be overridden with env MAX_CONTENT_LENGTH.
+try:
+    app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_CONTENT_LENGTH", 32 * 1024 * 1024))
+except ValueError:
+    app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
+
+# Apply ProxyFix when running behind a proxy/load-balancer and TRUST_PROXY is set
+if os.environ.get("TRUST_PROXY", "1").lower() in ("1", "true", "yes", "on") and ProxyFix is not None:
+    # Trust a single proxy by default (x_for=1, x_proto=1). Adjust via env if needed.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+
+RATE_LIMIT_REQUESTS = int(os.environ.get("RATE_LIMIT_REQUESTS", 20))
+RATE_LIMIT_WINDOW = int(os.environ.get("RATE_LIMIT_WINDOW", 60))
 request_history = defaultdict(deque)
 rate_lock = Lock()
 
@@ -104,6 +126,15 @@ CREATE INDEX IF NOT EXISTS idx_quotes_user_id ON quotes(user_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_job_id ON quotes(job_id);
 """
 
+# Redis client (optional)
+_redis_client = None
+REDIS_URL = os.environ.get("REDIS_URL")
+if REDIS_URL and redis is not None:
+    try:
+        _redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+    except Exception:
+        _redis_client = None
+
 
 def get_db_connection():
     database_url = os.environ.get("DATABASE_URL")
@@ -112,10 +143,37 @@ def get_db_connection():
     return psycopg.connect(database_url, connect_timeout=10)
 
 
-def init_db():
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(SCHEMA_SQL)
+def init_db_once(timeout=30):
+    """Run the SCHEMA_SQL exactly once across multiple processes using a Postgres advisory lock.
+    This prevents multiple gunicorn workers from racing to create tables.
+    """
+    start = time.time()
+    lock_key = 424242  # arbitrary constant chosen for the advisory lock
+    while True:
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # Try to obtain the advisory lock without blocking
+                    cur.execute("SELECT pg_try_advisory_lock(%s);", (lock_key,))
+                    got = cur.fetchone()[0]
+                    if got:
+                        app.logger.info("Acquired advisory lock for DB init; creating schema")
+                        cur.execute(SCHEMA_SQL)
+                        # Release the lock
+                        cur.execute("SELECT pg_advisory_unlock(%s);", (lock_key,))
+                        app.logger.info("Schema initialization complete; released advisory lock")
+                        return
+                    else:
+                        # somebody else is running init; wait until timeout or schema exists
+                        if time.time() - start > timeout:
+                            app.logger.info("Timed out waiting for DB init lock; continuing")
+                            return
+                        time.sleep(0.5)
+        except Exception:
+            app.logger.exception("Database init attempt failed")
+            if time.time() - start > timeout:
+                raise
+            time.sleep(1)
 
 
 def client_ip():
@@ -126,8 +184,24 @@ def client_ip():
 
 
 def rate_limited():
-    now = time.monotonic()
+    """Cross-process rate limiter using Redis if available, otherwise in-process memory.
+    Uses sliding window via simple counter with expiry.
+    """
     ip = client_ip()
+    if _redis_client is not None:
+        key = f"rate:{ip}"
+        try:
+            # INCR and set expiry if first seen
+            count = _redis_client.incr(key)
+            if count == 1:
+                _redis_client.expire(key, RATE_LIMIT_WINDOW)
+            return int(count) > RATE_LIMIT_REQUESTS
+        except Exception:
+            # Redis failed; fallback to in-memory
+            pass
+
+    # In-memory fallback (per-process)
+    now = time.monotonic()
     with rate_lock:
         history = request_history[ip]
         while history and now - history[0] >= RATE_LIMIT_WINDOW:
@@ -262,7 +336,7 @@ def ask():
     if rate_limited():
         response = jsonify(error="Too many AI requests. Please wait a moment and try again.")
         response.status_code = 429
-        response.headers["Retry-After"] = "60"
+        response.headers["Retry-After"] = str(RATE_LIMIT_WINDOW)
         return response
 
     if not request.is_json:
@@ -287,13 +361,15 @@ def ask():
         return jsonify(error="AI service could not complete the request. Please try again."), 502
 
 
+# Initialize the database schema safely once across workers
 try:
-    init_db()
-    app.logger.info("Database schema is ready")
+    init_db_once()
+    app.logger.info("Database schema ensured")
 except Exception:
     app.logger.exception("Database initialization failed")
     raise
 
 
 if __name__ == "__main__":
+    # When running directly (development), start the Flask dev server.
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))
