@@ -215,8 +215,11 @@ textarea{min-height:110px;resize:vertical}
 
 <section id="jobs" class="panel">
 <div class="jobs-intro"><div class="jobs-hero"><span class="pill">SPARKYMATEAU JOB HUB</span><h2>Electrical work, closer to home.</h2><p>Customers can request licensed electrical work. Local electricians can discover opportunities and, with an active membership, accept jobs that suit them.</p></div><div class="card" style="margin:0"><h2>Simple for both sides</h2><p>Post a job request at no cost. Electricians keep using the existing SparkymateAU tools for free.</p><p class="small">A paid membership will be required to accept jobs. Prices and checkout will be set before the job board opens.</p></div></div>
-<div class="jobs-actions"><article class="card jobcard"><h2>For electricians</h2><h3>Find work and take jobs</h3><p>Browse local requests, check the job details and choose which work is right for you.</p><div class="joblist-empty"><strong>Job listings will appear here</strong>The live job board is being prepared. No customer requests are published in this preview.</div><div class="member-box"><strong>Job access membership</strong>A paid subscription will be required before an electrician can accept a job. Your free AI assistant, calculators, reports and quote tools stay available without it.<button class="primary" type="button" onclick="membershipInfo()">See membership details</button></div></article>
-<article class="card jobcard"><h2>For customers</h2><h3>Need electrical work done?</h3><p>Describe the work, where it is and when you need help. SparkymateAU will match the request with local electricians.</p><label for="jobType">Type of work</label><select id="jobType"><option>Repair or fault finding</option><option>Installation or upgrade</option><option>Safety check or testing</option><option>Quote for planned work</option><option>Other electrical work</option></select><label for="jobArea">Suburb or postcode</label><input id="jobArea" placeholder="e.g. Parramatta or 2150"><label for="jobDetails">What needs to be done?</label><textarea id="jobDetails" placeholder="Describe the work and any timing requirements"></textarea><button class="primary" type="button" onclick="jobRequestPreview()">Start a job request</button><p class="small">This preview does not publish or send a request. Customer job posting will be enabled when the live marketplace is connected.</p><div id="jobRequestMessage" class="out" aria-live="polite" hidden></div></article></div>
+<div class="card"><h2>Marketplace account</h2><p id="marketplaceFeedback" class="small" aria-live="polite">Create an account or sign in to use the job board. All existing tools remain free.</p>
+<div id="marketplaceAuth"><label for="marketplaceRole">I am a</label><select id="marketplaceRole"><option value="customer">Customer — I need electrical work</option><option value="electrician">Electrician — I’m looking for jobs</option></select><label for="marketplaceEmail">Email</label><input id="marketplaceEmail" type="email" autocomplete="email" maxlength="254"><label for="marketplacePassword">Password</label><input id="marketplacePassword" type="password" autocomplete="current-password" minlength="12" maxlength="256"><div class="two"><button class="primary" type="button" onclick="registerMarketplace()">Create account</button><button class="grey" type="button" onclick="loginMarketplace()">Sign in</button></div><p class="small">Use at least 12 characters. Keep your password private.</p></div>
+<div id="marketplaceSignedIn" hidden><p id="marketplaceAccountSummary"></p><button class="grey" type="button" onclick="logoutMarketplace()">Sign out</button></div></div>
+<div class="jobs-actions"><article class="card jobcard"><h2>For electricians</h2><h3>Find work and take jobs</h3><p>Browse local requests, check the job details and choose which work is right for you.</p><div id="jobListings" class="joblist-empty"><strong>Sign in to view job requests</strong>Customers can post requests for free. You need an active membership to accept a job.</div><div class="member-box" id="membershipBox" hidden><strong>Job access membership</strong>An active paid subscription is required before an electrician can accept a job. The AI assistant, calculators, reports and quote tools remain free.<button id="membershipButton" class="primary" type="button" onclick="membershipInfo()">Start electrician membership</button></div></article>
+<article class="card jobcard"><h2>For customers</h2><h3>Need electrical work done?</h3><p>Describe the work and where it is. Posting a request is free.</p><label for="jobType">Type of work</label><select id="jobType"><option>Repair or fault finding</option><option>Installation or upgrade</option><option>Safety check or testing</option><option>Quote for planned work</option><option>Other electrical work</option></select><label for="jobArea">Suburb or postcode</label><input id="jobArea" placeholder="e.g. Parramatta or 2150" maxlength="120"><label for="jobState">State or territory</label><select id="jobState"><option value="">Choose state</option><option>ACT</option><option>NSW</option><option>NT</option><option>QLD</option><option>SA</option><option>TAS</option><option>VIC</option><option>WA</option></select><label for="jobDetails">What needs to be done?</label><textarea id="jobDetails" maxlength="4000" placeholder="Describe the work and any timing requirements"></textarea><button class="primary" type="button" onclick="jobRequestPreview()">Post job request — free</button><div id="jobRequestMessage" class="out" aria-live="polite" hidden></div></article></div>
 <div class="service-steps"><div class="service-step"><b>1. Customer posts a request</b><p>Share the job type, location and details. Posting a request is free.</p></div><div class="service-step"><b>2. Local electricians respond</b><p>Members browse available work and choose suitable jobs to accept.</p></div><div class="service-step"><b>3. Get the work sorted</b><p>Customer and electrician coordinate the visit and agree on the work.</p></div></div>
 </section>
 <section id="ai" class="panel">
@@ -529,13 +532,84 @@ function tab(id){
  });
 
  if(id==="saved")renderSaved();
+ if(id==="jobs")loadMarketplace();
 }
 
-function membershipInfo(){
- alert("Job subscriptions are not active yet. Paid access and Stripe checkout will be connected before electricians can accept live jobs. All existing tools remain free.");
+async function marketplaceRequest(path, options={}){
+ const response=await fetch(path,{credentials:"same-origin",headers:{"Content-Type":"application/json",...(options.headers||{})},...options});
+ const data=await response.json().catch(()=>({error:"The server returned an unreadable response."}));
+ if(!response.ok){const error=new Error(data.error||"The request could not be completed.");error.status=response.status;error.data=data;throw error;}
+ return data;
 }
-function jobRequestPreview(){
- const box=$("jobRequestMessage");box.hidden=false;box.textContent="This request has not been sent. Customer job posting will go live when the marketplace is connected.";
+let marketplaceCurrentUser=null;
+function marketplaceMessage(message){$("marketplaceFeedback").textContent=message;}
+function showMarketplaceAccount(user){
+ const auth=$("marketplaceAuth"),signed=$("marketplaceSignedIn"),summary=$("marketplaceAccountSummary");
+ marketplaceCurrentUser=user;
+ auth.hidden=!!user;signed.hidden=!user;
+ $("membershipBox").hidden=!(user&&user.role==="electrician");
+ if(user){summary.textContent=`Signed in as ${user.email} (${user.role}). Membership: ${user.membership||"inactive"}.`;
+  $("marketplaceRole").value=user.role;
+  $("membershipButton").textContent=user.membership==="active"?"Manage membership":"Start electrician membership";
+ }
+}
+async function loadMarketplace(){
+ try{
+  const data=await marketplaceRequest("/api/marketplace/me");
+  showMarketplaceAccount(data.user);
+  if(data.user){await loadMarketplaceJobs(data.user);}
+  else{$("jobListings").innerHTML="<strong>Sign in to view job requests</strong>Customers can post requests for free. You need an active membership to accept a job.";}
+ }catch(error){marketplaceMessage(error.message);}
+ const result=new URLSearchParams(location.search).get("membership");
+ if(result==="success")marketplaceMessage("Checkout completed. Your membership will activate after Stripe confirms it.");
+ if(result==="cancelled")marketplaceMessage("Checkout was cancelled. You can try again at any time.");
+}
+async function registerMarketplace(){
+ try{const data=await marketplaceRequest("/api/marketplace/register",{method:"POST",body:JSON.stringify({email:$("marketplaceEmail").value,password:$("marketplacePassword").value,role:$("marketplaceRole").value})});
+  $("marketplacePassword").value="";showMarketplaceAccount(data.user);marketplaceMessage("Account created. Customers can post jobs free; electricians can browse and subscribe to accept jobs.");await loadMarketplaceJobs(data.user);
+ }catch(error){marketplaceMessage(error.message);}
+}
+async function loginMarketplace(){
+ try{const data=await marketplaceRequest("/api/marketplace/login",{method:"POST",body:JSON.stringify({email:$("marketplaceEmail").value,password:$("marketplacePassword").value})});
+  $("marketplacePassword").value="";showMarketplaceAccount(data.user);marketplaceMessage("Signed in.");await loadMarketplaceJobs(data.user);
+ }catch(error){marketplaceMessage(error.message);}
+}
+async function logoutMarketplace(){
+ try{await marketplaceRequest("/api/marketplace/logout",{method:"POST",body:"{}"});showMarketplaceAccount(null);$("jobListings").innerHTML="<strong>Sign in to view job requests</strong>Customers can post requests for free. You need an active membership to accept a job.";marketplaceMessage("Signed out.");}
+ catch(error){marketplaceMessage(error.message);}
+}
+async function loadMarketplaceJobs(user){
+ const box=$("jobListings");
+ try{
+  const data=await marketplaceRequest("/api/marketplace/jobs");box.textContent="";
+  if(!data.jobs.length){box.className="joblist-empty";box.textContent=user.role==="customer"?"You have not posted a job yet.":"No open job requests yet. Check back soon.";return;}
+  box.className="";
+  data.jobs.forEach(job=>{
+   const card=document.createElement("article");card.className="card jobcard";
+   const title=document.createElement("h3");title.textContent=job.job_type;card.appendChild(title);
+   const location=document.createElement("p");location.textContent=`${job.suburb}, ${job.state} · ${job.status}`;card.appendChild(location);
+   const description=document.createElement("p");description.textContent=job.description;card.appendChild(description);
+   if(job.contact_email){const contact=document.createElement("p");contact.textContent=`Contact: ${job.contact_email}`;card.appendChild(contact);}
+   if(user.role==="electrician"&&job.status==="open"){
+    const button=document.createElement("button");button.className="primary";button.textContent=user.membership==="active"?"Accept job":"Subscribe to accept";button.onclick=()=>acceptMarketplaceJob(job.id);card.appendChild(button);
+   }
+   box.appendChild(card);
+  });
+ }catch(error){box.className="joblist-empty";box.textContent=error.message;}
+}
+async function acceptMarketplaceJob(jobId){
+ try{await marketplaceRequest(`/api/marketplace/jobs/${jobId}/accept`,{method:"POST",body:"{}"});marketplaceMessage("Job accepted.");await loadMarketplace();}
+ catch(error){if(error.status===402){marketplaceMessage(error.message);await membershipInfo();}else marketplaceMessage(error.message);}
+}
+async function membershipInfo(){
+ try{const endpoint=marketplaceCurrentUser&&marketplaceCurrentUser.membership==="active"?"portal":"checkout";const data=await marketplaceRequest(`/api/marketplace/subscription/${endpoint}`,{method:"POST",body:"{}"});location.assign(data.url);}
+ catch(error){marketplaceMessage(error.message);}
+}
+async function jobRequestPreview(){
+ const box=$("jobRequestMessage");box.hidden=false;
+ try{const data=await marketplaceRequest("/api/marketplace/jobs",{method:"POST",body:JSON.stringify({job_type:$("jobType").value,suburb:$("jobArea").value,state:$("jobState").value,description:$("jobDetails").value})});
+  box.textContent=`Job request #${data.job.id} posted. It is now visible to signed-in electricians.`;await loadMarketplace();
+ }catch(error){box.textContent=error.message;}
 }
 function findWholesalers(event){
  event.preventDefault();
