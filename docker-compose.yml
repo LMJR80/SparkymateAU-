@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: sparkymate
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sparkymateau
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://sparkymate:password@db:5432/sparkymateau
+      OPENAI_API_KEY: ""
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    command: gunicorn server:app --bind 0.0.0.0:8000 --workers 2
+
+volumes:
+  db_data:
