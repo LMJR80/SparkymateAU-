@@ -1,10 +1,17 @@
 import os
+import hashlib
+import hmac
+import json
+import secrets
 import time
 from collections import defaultdict, deque
 from threading import Lock
+from urllib.parse import urlencode, urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 import psycopg
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 
 try:
     from google import genai
@@ -32,6 +39,13 @@ except Exception:  # pragma: no cover
 
 # Create app
 app = Flask(__name__, static_folder="public")
+app.secret_key = os.environ.get("APP_SECRET_KEY") or None
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "true").lower() in ("1", "true", "yes", "on"),
+    PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 14,
+)
 # Max content length (bytes). Default to 32 MB. Can be overridden with env MAX_CONTENT_LENGTH.
 try:
     app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_CONTENT_LENGTH", 32 * 1024 * 1024))
@@ -126,6 +140,40 @@ CREATE INDEX IF NOT EXISTS idx_quotes_user_id ON quotes(user_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_job_id ON quotes(job_id);
 """
 
+MARKETPLACE_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS marketplace_users (
+    id BIGSERIAL PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('customer', 'electrician')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS marketplace_jobs (
+    id BIGSERIAL PRIMARY KEY,
+    customer_id BIGINT NOT NULL REFERENCES marketplace_users(id) ON DELETE CASCADE,
+    job_type TEXT NOT NULL,
+    suburb TEXT NOT NULL,
+    state TEXT NOT NULL,
+    description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'accepted', 'cancelled')),
+    electrician_id BIGINT REFERENCES marketplace_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    accepted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_marketplace_jobs_open ON marketplace_jobs(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_marketplace_jobs_customer ON marketplace_jobs(customer_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS marketplace_subscriptions (
+    user_id BIGINT PRIMARY KEY REFERENCES marketplace_users(id) ON DELETE CASCADE,
+    stripe_customer_id TEXT UNIQUE,
+    stripe_subscription_id TEXT UNIQUE,
+    status TEXT NOT NULL DEFAULT 'inactive',
+    current_period_end BIGINT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""
+
 # Redis client (optional)
 _redis_client = None
 REDIS_URL = os.environ.get("REDIS_URL")
@@ -159,6 +207,7 @@ def init_db_once(timeout=30):
                     if got:
                         app.logger.info("Acquired advisory lock for DB init; creating schema")
                         cur.execute(SCHEMA_SQL)
+                        cur.execute(MARKETPLACE_SCHEMA_SQL)
                         # Release the lock
                         cur.execute("SELECT pg_advisory_unlock(%s);", (lock_key,))
                         app.logger.info("Schema initialization complete; released advisory lock")
@@ -329,6 +378,410 @@ def get_ai_answer(message):
     if os.environ.get("GEMINI_API_KEY"):
         return get_gemini_answer(message)
     raise RuntimeError("No AI API key configured")
+
+
+PASSWORD_ITERATIONS = 310_000
+AU_STATES = {"ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"}
+
+
+def marketplace_user(user_id=None):
+    user_id = user_id or session.get("marketplace_user_id")
+    if not user_id:
+        return None
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, email, role FROM marketplace_users WHERE id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+    return {"id": row[0], "email": row[1], "role": row[2]} if row else None
+
+
+def marketplace_ready():
+    if not app.secret_key:
+        return jsonify(error="Marketplace setup is incomplete: APP_SECRET_KEY is missing."), 503
+    return None
+
+
+def same_origin_request():
+    origin = request.headers.get("Origin")
+    if not origin:
+        return False
+    parsed = urlparse(origin)
+    if parsed.netloc != request.host or parsed.scheme not in ("http", "https"):
+        return False
+    return not request.is_secure or parsed.scheme == "https"
+
+
+def hash_password(password):
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PASSWORD_ITERATIONS)
+    return f"pbkdf2_sha256${PASSWORD_ITERATIONS}${salt.hex()}${digest.hex()}"
+
+
+def verify_password(password, encoded):
+    try:
+        algorithm, iterations, salt_hex, digest_hex = encoded.split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        iterations = int(iterations)
+        if iterations < 100_000 or iterations > 2_000_000:
+            return False
+        expected = bytes.fromhex(digest_hex)
+        actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), iterations)
+        return hmac.compare_digest(actual, expected)
+    except (ValueError, TypeError):
+        return False
+
+
+def password_hash_is_valid(password_hash):
+    return len(password_hash) < 256
+
+
+def has_active_membership(user_id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT 1 FROM marketplace_subscriptions
+                   WHERE user_id = %s AND status IN ('active', 'trialing')
+                   AND (current_period_end IS NULL OR current_period_end > EXTRACT(EPOCH FROM NOW()))""",
+                (user_id,),
+            )
+            return cur.fetchone() is not None
+
+
+@app.get("/api/marketplace/me")
+def marketplace_me():
+    setup_error = marketplace_ready()
+    if setup_error is not None:
+        return setup_error
+    user = marketplace_user()
+    if not user:
+        session.pop("marketplace_user_id", None)
+        return jsonify(user=None), 200
+    user["membership"] = "active" if user["role"] == "electrician" and has_active_membership(user["id"]) else "inactive"
+    return jsonify(user=user), 200
+
+
+@app.post("/api/marketplace/register")
+def marketplace_register():
+    setup_error = marketplace_ready()
+    if setup_error is not None:
+        return setup_error
+    if not same_origin_request():
+        return jsonify(error="Request origin could not be verified."), 403
+    if rate_limited():
+        return jsonify(error="Too many account requests. Wait a minute and try again."), 429
+    data = request.get_json(silent=True) or {}
+    email = data.get("email", "")
+    password = data.get("password", "")
+    role = data.get("role", "")
+    if not isinstance(email, str) or not isinstance(password, str):
+        return jsonify(error="Enter a valid email and password."), 400
+    email = email.strip().lower()
+    if len(email) > 254 or "@" not in email or email.startswith("@") or email.endswith("@"):
+        return jsonify(error="Enter a valid email address."), 400
+    if len(password) < 12 or len(password) > 256:
+        return jsonify(error="Use a password between 12 and 256 characters."), 400
+    if role not in ("customer", "electrician"):
+        return jsonify(error="Choose customer or electrician."), 400
+    encoded = hash_password(password)
+    if not password_hash_is_valid(encoded):
+        return jsonify(error="Unable to create this account."), 400
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO marketplace_users (email, password_hash, role) VALUES (%s, %s, %s) RETURNING id, email, role",
+                    (email, encoded, role),
+                )
+                row = cur.fetchone()
+    except psycopg.errors.UniqueViolation:
+        return jsonify(error="An account with that email already exists. Sign in instead."), 409
+    session.clear()
+    session.permanent = True
+    session["marketplace_user_id"] = row[0]
+    return jsonify(user={"id": row[0], "email": row[1], "role": row[2], "membership": "inactive"}), 201
+
+
+@app.post("/api/marketplace/login")
+def marketplace_login():
+    setup_error = marketplace_ready()
+    if setup_error is not None:
+        return setup_error
+    if not same_origin_request():
+        return jsonify(error="Request origin could not be verified."), 403
+    if rate_limited():
+        return jsonify(error="Too many sign-in attempts. Wait a minute and try again."), 429
+    data = request.get_json(silent=True) or {}
+    email = data.get("email", "")
+    password = data.get("password", "")
+    if not isinstance(email, str) or not isinstance(password, str):
+        return jsonify(error="Email or password is incorrect."), 401
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, email, role, password_hash FROM marketplace_users WHERE email = %s",
+                (email.strip().lower(),),
+            )
+            row = cur.fetchone()
+    if not row or not verify_password(password, row[3]):
+        return jsonify(error="Email or password is incorrect."), 401
+    session.clear()
+    session.permanent = True
+    session["marketplace_user_id"] = row[0]
+    membership = "active" if row[2] == "electrician" and has_active_membership(row[0]) else "inactive"
+    return jsonify(user={"id": row[0], "email": row[1], "role": row[2], "membership": membership}), 200
+
+
+@app.post("/api/marketplace/logout")
+def marketplace_logout():
+    if not same_origin_request():
+        return jsonify(error="Request origin could not be verified."), 403
+    session.clear()
+    return jsonify(ok=True), 200
+
+
+@app.route("/api/marketplace/jobs", methods=["GET", "POST"])
+def marketplace_jobs():
+    setup_error = marketplace_ready()
+    if setup_error is not None:
+        return setup_error
+    user = marketplace_user()
+    if not user:
+        return jsonify(error="Sign in to use the job board."), 401
+
+    if request.method == "POST":
+        if not same_origin_request():
+            return jsonify(error="Request origin could not be verified."), 403
+        if rate_limited():
+            return jsonify(error="Too many job requests. Wait a minute and try again."), 429
+        if user["role"] != "customer":
+            return jsonify(error="Only customer accounts can post jobs."), 403
+        data = request.get_json(silent=True) or {}
+        job_type = data.get("job_type", "")
+        suburb = data.get("suburb", "")
+        state = data.get("state", "")
+        description = data.get("description", "")
+        if not all(isinstance(value, str) for value in (job_type, suburb, state, description)):
+            return jsonify(error="Complete each job field with text."), 400
+        job_type, suburb, state, description = job_type.strip(), suburb.strip(), state.strip().upper(), description.strip()
+        if not job_type or len(job_type) > 100 or not suburb or len(suburb) > 120:
+            return jsonify(error="Enter a job type and suburb."), 400
+        if state not in AU_STATES or not description or len(description) > 4000:
+            return jsonify(error="Choose a state and enter job details (up to 4,000 characters)."), 400
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO marketplace_jobs (customer_id, job_type, suburb, state, description)
+                       VALUES (%s, %s, %s, %s, %s) RETURNING id, job_type, suburb, state, description, status, created_at""",
+                    (user["id"], job_type, suburb, state, description),
+                )
+                row = cur.fetchone()
+        return jsonify(job={"id": row[0], "job_type": row[1], "suburb": row[2], "state": row[3], "description": row[4], "status": row[5], "created_at": row[6].isoformat()}), 201
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            if user["role"] == "customer":
+                cur.execute(
+                    """SELECT j.id, j.job_type, j.suburb, j.state, j.description, j.status, j.created_at,
+                              CASE WHEN j.status = 'accepted' THEN e.email ELSE NULL END
+                       FROM marketplace_jobs j LEFT JOIN marketplace_users e ON e.id = j.electrician_id
+                       WHERE j.customer_id = %s ORDER BY j.created_at DESC LIMIT 100""",
+                    (user["id"],),
+                )
+            else:
+                cur.execute(
+                    """SELECT j.id, j.job_type, j.suburb, j.state, j.description, j.status, j.created_at,
+                              CASE WHEN j.status = 'accepted' THEN c.email ELSE NULL END
+                       FROM marketplace_jobs j JOIN marketplace_users c ON c.id = j.customer_id
+                       WHERE j.status = 'open' OR (j.status = 'accepted' AND j.electrician_id = %s)
+                       ORDER BY j.created_at DESC LIMIT 100""",
+                    (user["id"],),
+                )
+            rows = cur.fetchall()
+    jobs = [{"id": r[0], "job_type": r[1], "suburb": r[2], "state": r[3], "description": r[4], "status": r[5], "created_at": r[6].isoformat(), "contact_email": r[7]} for r in rows]
+    return jsonify(jobs=jobs), 200
+
+
+@app.post("/api/marketplace/jobs/<int:job_id>/accept")
+def marketplace_accept_job(job_id):
+    setup_error = marketplace_ready()
+    if setup_error is not None:
+        return setup_error
+    if not same_origin_request():
+        return jsonify(error="Request origin could not be verified."), 403
+    if rate_limited():
+        return jsonify(error="Too many requests. Wait a minute and try again."), 429
+    user = marketplace_user()
+    if not user:
+        return jsonify(error="Sign in to accept a job."), 401
+    if user["role"] != "electrician":
+        return jsonify(error="Only electrician accounts can accept jobs."), 403
+    if not has_active_membership(user["id"]):
+        return jsonify(error="An active electrician subscription is required to accept jobs.", subscription_required=True), 402
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE marketplace_jobs SET status = 'accepted', electrician_id = %s, accepted_at = NOW()
+                   WHERE id = %s AND status = 'open' RETURNING id""",
+                (user["id"], job_id),
+            )
+            row = cur.fetchone()
+    if not row:
+        return jsonify(error="That job is no longer available."), 409
+    return jsonify(ok=True, job_id=row[0]), 200
+
+
+@app.post("/api/marketplace/subscription/checkout")
+def marketplace_subscription_checkout():
+    setup_error = marketplace_ready()
+    if setup_error is not None:
+        return setup_error
+    if not same_origin_request():
+        return jsonify(error="Request origin could not be verified."), 403
+    if rate_limited():
+        return jsonify(error="Too many checkout requests. Wait a minute and try again."), 429
+    user = marketplace_user()
+    if not user:
+        return jsonify(error="Sign in as an electrician first."), 401
+    if user["role"] != "electrician":
+        return jsonify(error="Only electrician accounts can subscribe."), 403
+    if has_active_membership(user["id"]):
+        return jsonify(error="Your membership is already active. Use Manage membership to change or cancel it."), 409
+    secret = os.environ.get("STRIPE_SECRET_KEY")
+    price_id = os.environ.get("STRIPE_PRICE_ID")
+    base_url = os.environ.get("APP_BASE_URL", "").rstrip("/")
+    if not secret or not price_id or not base_url:
+        return jsonify(error="Membership checkout is not configured yet."), 503
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT stripe_customer_id FROM marketplace_subscriptions WHERE user_id = %s", (user["id"],))
+            row = cur.fetchone()
+    form = {
+        "mode": "subscription",
+        "line_items[0][price]": price_id,
+        "line_items[0][quantity]": "1",
+        "success_url": base_url + "/?membership=success#jobs",
+        "cancel_url": base_url + "/?membership=cancelled#jobs",
+        "client_reference_id": str(user["id"]),
+        "metadata[marketplace_user_id]": str(user["id"]),
+        "subscription_data[metadata][marketplace_user_id]": str(user["id"]),
+    }
+    if row and row[0]:
+        form["customer"] = row[0]
+    else:
+        form["customer_email"] = user["email"]
+    body = urlencode(form).encode("utf-8")
+    req = Request(
+        "https://api.stripe.com/v1/checkout/sessions",
+        data=body,
+        headers={"Authorization": "Bearer " + secret, "Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    try:
+        with urlopen(req, timeout=20) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        if not payload.get("url"):
+            raise ValueError("Stripe did not return a checkout URL")
+        return jsonify(url=payload["url"]), 200
+    except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        app.logger.exception("Stripe Checkout session creation failed")
+        return jsonify(error="Could not start membership checkout. Please try again later."), 502
+
+
+@app.post("/api/marketplace/subscription/portal")
+def marketplace_subscription_portal():
+    setup_error = marketplace_ready()
+    if setup_error is not None:
+        return setup_error
+    if not same_origin_request():
+        return jsonify(error="Request origin could not be verified."), 403
+    if rate_limited():
+        return jsonify(error="Too many requests. Wait a minute and try again."), 429
+    user = marketplace_user()
+    if not user or user["role"] != "electrician":
+        return jsonify(error="Sign in as an electrician first."), 401
+    secret = os.environ.get("STRIPE_SECRET_KEY")
+    base_url = os.environ.get("APP_BASE_URL", "").rstrip("/")
+    if not secret or not base_url:
+        return jsonify(error="Membership management is not configured yet."), 503
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT stripe_customer_id FROM marketplace_subscriptions WHERE user_id = %s", (user["id"],))
+            row = cur.fetchone()
+    if not row or not row[0]:
+        return jsonify(error="No Stripe membership was found for this account."), 404
+    body = urlencode({"customer": row[0], "return_url": base_url + "/#jobs"}).encode("utf-8")
+    req = Request(
+        "https://api.stripe.com/v1/billing_portal/sessions",
+        data=body,
+        headers={"Authorization": "Bearer " + secret, "Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    try:
+        with urlopen(req, timeout=20) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        if not payload.get("url"):
+            raise ValueError("Stripe did not return a portal URL")
+        return jsonify(url=payload["url"]), 200
+    except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        app.logger.exception("Stripe billing portal creation failed")
+        return jsonify(error="Could not open membership management. Please try again later."), 502
+
+
+def valid_stripe_signature(payload, signature_header, secret):
+    try:
+        parts = dict(item.split("=", 1) for item in signature_header.split(","))
+        timestamp = int(parts["t"])
+        if abs(int(time.time()) - timestamp) > 300:
+            return False
+        expected = hmac.new(secret.encode("utf-8"), str(timestamp).encode("ascii") + b"." + payload, hashlib.sha256).hexdigest()
+        return any(hmac.compare_digest(expected, item) for key, item in (p.split("=", 1) for p in signature_header.split(",")) if key == "v1")
+    except (KeyError, ValueError, TypeError):
+        return False
+
+
+@app.post("/api/stripe/webhook")
+def stripe_webhook():
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+    signature = request.headers.get("Stripe-Signature", "")
+    payload = request.get_data(cache=False)
+    if not webhook_secret or not valid_stripe_signature(payload, signature, webhook_secret):
+        return jsonify(error="Invalid Stripe signature."), 400
+    try:
+        event = json.loads(payload.decode("utf-8"))
+        event_type = event.get("type", "")
+        obj = event["data"]["object"]
+    except (ValueError, KeyError, TypeError):
+        return jsonify(error="Invalid Stripe event."), 400
+    if event_type in ("customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"):
+        metadata = obj.get("metadata") or {}
+        user_id = metadata.get("marketplace_user_id")
+        customer_id = obj.get("customer")
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    if user_id:
+                        cur.execute(
+                            """INSERT INTO marketplace_subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end, updated_at)
+                               VALUES (%s, %s, %s, %s, %s, NOW())
+                               ON CONFLICT (user_id) DO UPDATE SET stripe_customer_id = EXCLUDED.stripe_customer_id,
+                               stripe_subscription_id = EXCLUDED.stripe_subscription_id, status = EXCLUDED.status,
+                               current_period_end = EXCLUDED.current_period_end, updated_at = NOW()""",
+                            (int(user_id), customer_id, obj.get("id"), obj.get("status", "inactive"), obj.get("current_period_end")),
+                        )
+                    elif customer_id:
+                        cur.execute(
+                            """UPDATE marketplace_subscriptions SET stripe_subscription_id = %s, status = %s,
+                               current_period_end = %s, updated_at = NOW() WHERE stripe_customer_id = %s""",
+                            (obj.get("id"), obj.get("status", "inactive"), obj.get("current_period_end"), customer_id),
+                        )
+        except (ValueError, TypeError):
+            app.logger.exception("Invalid marketplace user id in Stripe subscription event")
+            return jsonify(error="Invalid subscription metadata."), 400
+    return jsonify(received=True), 200
 
 
 @app.post("/api/ask")
