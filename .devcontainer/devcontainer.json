@@ -1,9 +1,10 @@
 {
   "name": "SparkymateAU",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "../Dockerfile",
     "context": ".."
   },
+  "features": { "ghcr.io/devcontainers/features/git:1": {} },
   "forwardPorts": [8000, 5432, 6379],
   "portsAttributes": {
     "8000": {
